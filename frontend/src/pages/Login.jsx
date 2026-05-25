@@ -9,6 +9,8 @@ export default function Login() {
   const [error, setError] = useState('');
   const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [captchaMath, setCaptchaMath] = useState({ num1: 0, num2: 0 });
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [pendingLoginData, setPendingLoginData] = useState(null);
   const navigate = useNavigate();
 
   const generateCaptcha = () => {
@@ -39,17 +41,29 @@ export default function Login() {
     setError('');
     try {
       const res = await axios.post('http://localhost:5000/api/login', { username, password });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('kodeRs', res.data.kodeRs);
-      localStorage.setItem('role', res.data.role);
-      localStorage.setItem('nama', res.data.nama || username);
-      navigate('/dashboard');
+      setPendingLoginData(res.data);
+      setShowDisclaimer(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal login. Periksa koneksi ke server.');
       generateCaptcha();
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAgree = () => {
+    if (pendingLoginData) {
+      localStorage.setItem('token', pendingLoginData.token);
+      localStorage.setItem('kodeRs', pendingLoginData.kodeRs);
+      localStorage.setItem('role', pendingLoginData.role);
+      localStorage.setItem('nama', pendingLoginData.nama || username);
+      navigate('/dashboard');
+    }
+  };
+
+  const handleDisagree = () => {
+    setShowDisclaimer(false);
+    setPendingLoginData(null);
   };
 
   return (
@@ -109,11 +123,54 @@ export default function Login() {
             </div>
           </div>
 
-          <button type="submit" className="btn-primary btn-block" disabled={loading} style={{ marginTop: '1rem' }}>
+          <button type="submit" className="btn-primary btn-block" disabled={loading} style={{ marginTop: '1.5rem' }}>
             {loading ? <span className="spinner"></span> : 'Masuk Sistem'}
           </button>
         </form>
       </div>
+
+      {showDisclaimer && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', textAlign: 'center', fontSize: '1.25rem', fontWeight: 900 }}>
+              DISCLAIMER PENGGUNAAN APLIKASI
+            </h3>
+            <div style={{ backgroundColor: '#f8fafc', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto', fontSize: '0.85rem', color: '#334155', lineHeight: '1.6' }}>
+              <p style={{ margin: '0 0 0.75rem 0', fontWeight: 700 }}>Dengan menggunakan aplikasi ini, Anda menyetujui ketentuan berikut:</p>
+              <ol style={{ paddingLeft: '1.25rem', margin: '0 0 1rem 0' }}>
+                <li style={{ marginBottom: '0.5rem' }}>Data yang Anda masukkan adalah benar.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Anda bertanggung jawab penuh atas penggunaan akun Anda.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Data berikut yang akan Anda unduh bersifat rahasia dan hanya ditujukan untuk penggunaan individu atau entitas yang dituju/disetujui/berhak.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Aplikasi Ini Diproses di Browser lokal dan tidak dikirimkan atau di simpan di Server manapun atau Pihak ke 3.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Developer tidak menyimpan sama sekali data TXT yang telah diupload, merestart aplikasi atau close browser akan otomatis menghapus data txt anda.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Apabila data yang Anda terima terdapat kesalahan isi/konten, harap segera memberitahukan kepada APCI.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Anda tidak diperkenankan menyebarkan, mendistribusikan atau menyalin data ini.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Segala tindakan penyalahgunaan terhadap data ini bukan menjadi tanggung jawab APCI.</li>
+              </ol>
+              <p style={{ margin: 0, fontWeight: 800, color: '#0f172a' }}>Terima kasih telah menggunakan aplikasi AKSI-APCI.</p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={handleDisagree}
+                style={{ flex: 1, padding: '0.75rem', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', transition: 'background-color 0.2s' }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#e2e8f0'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#f1f5f9'}
+              >
+                TIDAK SETUJU
+              </button>
+              <button 
+                onClick={handleAgree}
+                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s' }}
+                onMouseOver={(e) => e.target.style.opacity = '0.9'}
+                onMouseOut={(e) => e.target.style.opacity = '1'}
+              >
+                SAYA SETUJU
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

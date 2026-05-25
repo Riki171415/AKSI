@@ -39,10 +39,10 @@ export default function UserManagement() {
 
   if (role !== 'admin') {
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
-        <Shield size={64} className="text-rose-500" />
-        <h2 className="text-2xl font-black text-slate-800">AKSES DITOLAK</h2>
-        <p className="text-slate-500">Anda tidak memiliki hak akses administrator.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem' }}>
+        <Shield size={64} color="var(--danger)" />
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>AKSES DITOLAK</h2>
+        <p style={{ color: 'var(--text-muted)' }}>Anda tidak memiliki hak akses administrator.</p>
       </div>
     );
   }
@@ -85,7 +85,7 @@ export default function UserManagement() {
       
       const payload = { ...formData };
       if (editingId && !payload.password) {
-        delete payload.password; // Don't send empty password if not changing
+        delete payload.password;
       }
 
       if (editingId) {
@@ -116,50 +116,50 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+    <div>
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 className="text-2xl font-black text-brand-navy uppercase italic">Manajemen <span className="text-brand-tosca">User</span></h1>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Kelola Akun Akses Rumah Sakit & Admin</p>
+          <h1 className="page-title" style={{ marginBottom: '0.25rem', fontStyle: 'italic', fontWeight: 900 }}>Manajemen User</h1>
+          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Kelola Akun Akses Rumah Sakit & Admin</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn-primary flex items-center gap-2">
+        <button onClick={() => handleOpenModal()} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <UserPlus size={16} /> Tambah User
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="card table-responsive" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
-          <div className="p-12 text-center text-slate-400 font-bold animate-pulse">Memuat data user...</div>
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontWeight: 700 }}>Memuat data user...</div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-black">
+          <table>
+            <thead>
               <tr>
-                <th className="p-4">No</th>
-                <th className="p-4">Nama Instansi/User</th>
-                <th className="p-4">Username</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Kode RS</th>
-                <th className="p-4 text-center">Aksi</th>
+                <th>No</th>
+                <th>Nama Instansi/User</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Kode RS</th>
+                <th style={{ textAlign: 'center' }}>Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {users.map((u, i) => (
-                <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="p-4 font-bold text-slate-400">{i + 1}</td>
-                  <td className="p-4 font-bold text-brand-navy">{u.nama || '-'}</td>
-                  <td className="p-4 font-medium">{u.username}</td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${u.role === 'admin' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                      {u.role}
+                <tr key={u.id}>
+                  <td style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{i + 1}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--text-main)' }}>{u.nama || '-'}</td>
+                  <td style={{ fontWeight: 500 }}>{u.username}</td>
+                  <td>
+                    <span className={`badge ${u.role === 'admin' ? 'badge-danger' : ''}`} style={u.role !== 'admin' ? { backgroundColor: 'rgba(0, 177, 234, 0.1)', color: 'var(--primary)' } : {}}>
+                      {u.role.toUpperCase()}
                     </span>
                   </td>
-                  <td className="p-4 font-mono font-bold text-slate-600">{u.kodeRs}</td>
-                  <td className="p-4 flex justify-center gap-2">
-                    <button onClick={() => handleOpenModal(u)} className="p-2 text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                  <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{u.kodeRs}</td>
+                  <td style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                    <button onClick={() => handleOpenModal(u)} style={{ padding: '0.5rem', color: '#0284c7', backgroundColor: '#f0f9ff' }}>
                       <Edit size={16} />
                     </button>
                     {u.username !== 'admin' && (
-                      <button onClick={() => handleDelete(u.id)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                      <button onClick={() => handleDelete(u.id)} style={{ padding: '0.5rem', color: '#e11d48', backgroundColor: '#ffe4e6' }}>
                         <Trash2 size={16} />
                       </button>
                     )}
@@ -172,53 +172,51 @@ export default function UserManagement() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-xl font-black text-brand-navy uppercase">{editingId ? 'Edit User' : 'Tambah User Baru'}</h2>
-              <button onClick={handleCloseModal} className="text-slate-400 hover:text-rose-500 transition-colors">
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: '1rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '400px', padding: 0, overflow: 'hidden', margin: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border)', backgroundColor: '#f8fafc' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', margin: 0 }}>{editingId ? 'Edit User' : 'Tambah User'}</h2>
+              <button onClick={handleCloseModal} style={{ background: 'none', padding: 0, color: 'var(--text-muted)' }}>
                 <X size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {error && <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold">{error}</div>}
+            <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
+              {error && <div style={{ padding: '0.75rem', borderRadius: '8px', backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginBottom: '1rem' }}>{error}</div>}
               
-              <div>
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Nama Instansi/User</label>
-                <input required type="text" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-brand-tosca focus:ring-2 focus:ring-brand-tosca/20 outline-none transition-all" placeholder="Contoh: RSUD Berkah" />
+              <div className="input-group">
+                <label>Nama Instansi/User</label>
+                <input required type="text" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} placeholder="Contoh: RSUD Berkah" />
               </div>
               
-              <div>
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Username Login</label>
-                <input required type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-brand-tosca focus:ring-2 focus:ring-brand-tosca/20 outline-none transition-all" placeholder="Username unik" />
+              <div className="input-group">
+                <label>Username Login</label>
+                <input required type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} placeholder="Username unik" />
               </div>
 
-              <div>
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                  Password {editingId && <span className="text-slate-400 normal-case font-medium">(Kosongkan jika tidak diubah)</span>}
-                </label>
-                <input required={!editingId} type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-brand-tosca focus:ring-2 focus:ring-brand-tosca/20 outline-none transition-all" placeholder="Password rahasia" />
+              <div className="input-group">
+                <label>Password {editingId && <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>(Kosongkan jika tidak diubah)</span>}</label>
+                <input required={!editingId} type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Password rahasia" />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Role Akses</label>
-                  <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-brand-tosca focus:ring-2 focus:ring-brand-tosca/20 outline-none transition-all font-bold">
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label>Role</label>
+                  <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 700 }}>
                     <option value="user">USER (RS)</option>
                     <option value="admin">ADMIN</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Kode RS (Kemkes)</label>
-                  <input required type="text" value={formData.kodeRs} onChange={e => setFormData({...formData, kodeRs: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-brand-tosca focus:ring-2 focus:ring-brand-tosca/20 outline-none transition-all font-mono" placeholder="Misal: 3273015" />
+                <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label>Kode RS</label>
+                  <input required type="text" value={formData.kodeRs} onChange={e => setFormData({...formData, kodeRs: e.target.value})} placeholder="Misal: 3273015" />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex gap-3">
-                <button type="button" onClick={handleCloseModal} className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Batal</button>
-                <button type="submit" className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-brand-tosca hover:bg-teal-600 shadow-lg shadow-teal-500/30 transition-all flex justify-center items-center gap-2">
-                  <Save size={18} /> Simpan Data
+              <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <button type="button" onClick={handleCloseModal} style={{ flex: 1, padding: '0.75rem', fontWeight: 700, backgroundColor: '#f1f5f9', color: '#475569' }}>Batal</button>
+                <button type="submit" className="btn-primary" style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <Save size={18} /> Simpan
                 </button>
               </div>
             </form>

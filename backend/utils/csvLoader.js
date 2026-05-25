@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 let icdMap = new Map(); // ICD -> Array of { group, level, levelInt }
+let icdDescMap = new Map(); // ICD -> Description
 let competencies = new Set();
 
 const levelValues = {
@@ -27,6 +28,7 @@ function loadCSV() {
         if (parts.length >= 6) {
             const groupName = parts[2].trim();
             const icdCode = parts[3].replace(/["']/g, '').trim();
+            const icdDesc = parts[4].replace(/["']/g, '').trim();
             const levelRaw = parts[5].replace(/["']/g, '').trim();
             
             const level = levelRaw.charAt(0).toUpperCase() + levelRaw.slice(1).toLowerCase();
@@ -36,6 +38,9 @@ function loadCSV() {
             
             if (!icdMap.has(icdCode)) {
                 icdMap.set(icdCode, []);
+            }
+            if (!icdDescMap.has(icdCode) && icdDesc) {
+                icdDescMap.set(icdCode, icdDesc);
             }
             
             const existing = icdMap.get(icdCode);
@@ -49,4 +54,4 @@ function loadCSV() {
 
 loadCSV();
 
-module.exports = { icdMap, competencies: Array.from(competencies).sort() };
+module.exports = { icdMap, icdDescMap, competencies: Array.from(competencies).sort() };

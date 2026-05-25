@@ -12,6 +12,8 @@ router.get('/settings', verifyToken, authController.getSettings);
 router.post('/settings', verifyToken, authController.saveSettings);
 
 router.post('/analyze', verifyToken, analysisController.uploadMiddleware, analysisController.analyzeTxt);
+router.get('/analyze/latest', verifyToken, analysisController.getLatestAnalysis);
+router.delete('/analyze/clear', verifyToken, analysisController.clearAnalysis);
 
 // User Management Routes (Admin only)
 router.get('/users', verifyToken, requireAdmin, userController.getAllUsers);

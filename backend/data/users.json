@@ -1,11 +1,11 @@
 [
   {
     "id": "1",
-    "username": "admin",
-    "password": "adminpassword",
+    "username": "Admin APCI",
+    "password": "APCI2026",
     "role": "admin",
     "kodeRs": "ALL",
-    "nama": "Administrator"
+    "nama": "Administrator APCI"
   },
   {
     "id": "2",
