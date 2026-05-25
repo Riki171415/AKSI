@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   PieChart, Users, Activity, User, BarChart3, TrendingUp, TrendingDown,
   Zap, Search, Stethoscope, ClipboardList, ActivitySquare, Layers,
-  Trash2, PlusCircle, RefreshCw, Upload, Download
+  Trash2, PlusCircle, RefreshCw, Upload, Download, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { exportChartToPNG } from '../utils/exportUtils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell, PieChart as RePieChart, Pie } from 'recharts';
