@@ -273,8 +273,8 @@ export default function Dashboard() {
   };
 
   const MiniTable = ({ data, columns }) => (
-    <div style={{ flex: 1, padding: '1rem', overflowX: 'auto' }}>
-      <table className="mini-table">
+    <div style={{ flex: 1, padding: '0.5rem', overflowX: 'auto' }}>
+      <table className="premium-table">
         <thead>
           <tr>{columns.map((c, i) => <th key={i} className={c.className || ''}>{c.header}</th>)}</tr>
         </thead>
@@ -282,7 +282,7 @@ export default function Dashboard() {
           {data && data.length > 0 ? data.map((r, i) => (
             <tr key={i}>{columns.map((c, j) => <td key={j} className={c.className || ''}>{c.render(r, i)}</td>)}</tr>
           )) : (
-            <tr><td colSpan={columns.length} className="text-center">Tidak ada data</td></tr>
+            <tr><td colSpan={columns.length} className="text-center" style={{padding: '2rem'}}>Tidak ada data</td></tr>
           )}
         </tbody>
       </table>
@@ -714,63 +714,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* PIE CHARTS */}
-      <div className="big-card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
-        <div className="big-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.1em', width: '100%', textAlign: 'left', marginBottom: '2rem' }}>Volume Arah Selisih</h3>
-          
-          <div style={{ position: 'relative', width: '220px', height: '220px' }}>
-            {renderDoughnut(selPie)}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', pointerEvents: 'none' }}>
-              <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e293b' }}>{t.toLocaleString()}</span>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Kasus</span>
-            </div>
-          </div>
-          
-          <div style={{ width: '100%', borderTop: '1px solid #f1f5f9', marginTop: '2rem', paddingTop: '1.5rem' }}>
-            {selPie.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderRadius: '0.75rem', marginBottom: '0.5rem', backgroundColor: 'rgba(248, 250, 252, 0.5)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: item.color }}></div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569' }}>{item.label}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 900, color: item.color, marginRight: '0.5rem' }}>{(item.value / 100 * t).toLocaleString()}</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8' }}>({formatPct(item.value)}%)</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="big-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.1em', width: '100%', textAlign: 'left', marginBottom: '2rem' }}>Status Cara Pulang</h3>
-          
-          <div style={{ position: 'relative', width: '220px', height: '220px' }}>
-            {renderDoughnut(dischargePie)}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', pointerEvents: 'none' }}>
-              <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e293b' }}>{t.toLocaleString()}</span>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Pasien</span>
-            </div>
-          </div>
-          
-          <div style={{ width: '100%', borderTop: '1px solid #f1f5f9', marginTop: '2rem', paddingTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            {dischargePie.map((item, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem', borderRadius: '0.75rem', backgroundColor: 'rgba(248, 250, 252, 0.5)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: item.color }}></div>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 900, color: item.color }}>{formatPct(item.value)}%</span>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', marginLeft: '0.25rem' }}>({(item.value / 100 * t).toLocaleString()})</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* TOP 10 TABLES SECTION 1 */}
       <div style={{ textAlign: 'center', marginTop: '4rem', marginBottom: '2rem' }}>
         <div style={{ width: '48px', height: '48px', backgroundColor: '#ccfbf1', color: '#0d9488', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
@@ -778,89 +721,97 @@ export default function Dashboard() {
         </div>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e293b', margin: 0 }}>Top 10 Analisis Klinis & Finansial</h2>
       </div>
-
-      {/* OLD TABLES REMOVED - now in new card grid below */}
-
       {/* TOP 10 TABLES SECTION 2 */}
-      <div className="big-card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
+      <div className="big-card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))' }}>
         {/* INA SURPLUS */}
-        <div className="chart-card" style={{ padding: '1.5rem', marginBottom: 0 }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 900, color: '#1e293b', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '24px', backgroundColor: '#10b981', borderRadius: '4px' }}></span>
+        <div className="premium-card">
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#1e293b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '50%' }}>
+              <ArrowUpRight size={20} />
+            </div>
             Top 10 Surplus INA-CBG
           </h3>
-          <div style={{ flex: 1, overflowX: 'auto' }}>
           <MiniTable data={dashData.topSurplusIna} columns={[
-            { header: 'Kode & Deskripsi', className: 'font-black text-slate', render: r => (
-              <div>
-                <div style={{color: '#1e293b'}}>{r.code || '-'}</div>
-                <div style={{fontSize: '0.65rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px'}} title={r.desc}>{r.desc || '-'}</div>
+            { header: 'Peringkat & Deskripsi', className: 'text-left', render: (r, i) => (
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className={`rank-badge ${i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other'}`}>{i + 1}</span>
+                <div>
+                  <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '0.85rem' }}>{r.code || '-'}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }} title={r.desc}>{r.desc || '-'}</div>
+                </div>
               </div>
             ) },
-            { header: 'Kss', className: 'text-center font-black', render: r => r.count },
-            { header: 'Selisih', className: 'text-right font-black text-emerald', render: r => '+' + formatRp(r.selisihVsRs) }
+            { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Selisih', className: 'text-right text-emerald', render: r => '+' + formatRp(r.selisihVsRs) }
           ]} />
-          </div>
         </div>
 
-        <div className="chart-card" style={{ padding: '1.5rem', marginBottom: 0 }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 900, color: '#1e293b', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '24px', backgroundColor: '#e11d48', borderRadius: '4px' }}></span>
+        <div className="premium-card">
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#1e293b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backgroundColor: 'rgba(225, 29, 72, 0.1)', color: '#e11d48', borderRadius: '50%' }}>
+              <ArrowDownRight size={20} />
+            </div>
             Top 10 Defisit INA-CBG
           </h3>
-          <div style={{ flex: 1, overflowX: 'auto' }}>
           <MiniTable data={dashData.topDefisitIna} columns={[
-            { header: 'Kode & Deskripsi', className: 'font-black text-slate', render: r => (
-              <div>
-                <div style={{color: '#1e293b'}}>{r.code || '-'}</div>
-                <div style={{fontSize: '0.65rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px'}} title={r.desc}>{r.desc || '-'}</div>
+            { header: 'Peringkat & Deskripsi', className: 'text-left', render: (r, i) => (
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className={`rank-badge ${i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other'}`}>{i + 1}</span>
+                <div>
+                  <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '0.85rem' }}>{r.code || '-'}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }} title={r.desc}>{r.desc || '-'}</div>
+                </div>
               </div>
             ) },
-            { header: 'Kss', className: 'text-center font-black', render: r => r.count },
-            { header: 'Selisih', className: 'text-right font-black text-rose', render: r => '-' + formatRp(Math.abs(r.selisihVsRs)) }
+            { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Selisih', className: 'text-right text-rose', render: r => '-' + formatRp(Math.abs(r.selisihVsRs)) }
           ]} />
-          </div>
         </div>
 
         {/* IDRG SURPLUS */}
-        <div className="chart-card" style={{ padding: '1.5rem', marginBottom: 0 }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 900, color: '#1e293b', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '24px', backgroundColor: '#0ea5e9', borderRadius: '4px' }}></span>
+        <div className="premium-card">
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#1e293b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backgroundColor: 'rgba(14, 165, 233, 0.1)', color: '#0ea5e9', borderRadius: '50%' }}>
+              <ArrowUpRight size={20} />
+            </div>
             Top 10 Surplus iDRG
           </h3>
-          <div style={{ flex: 1, overflowX: 'auto' }}>
           <MiniTable data={dashData.topSurplus} columns={[
-            { header: 'Kode & Deskripsi', className: 'font-black text-slate', render: r => (
-              <div>
-                <div style={{color: '#1e293b'}}>{r.code || '-'}</div>
-                <div style={{fontSize: '0.65rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px'}} title={r.desc}>{r.desc || '-'}</div>
+            { header: 'Peringkat & Deskripsi', className: 'text-left', render: (r, i) => (
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className={`rank-badge ${i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other'}`}>{i + 1}</span>
+                <div>
+                  <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '0.85rem' }}>{r.code || '-'}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }} title={r.desc}>{r.desc || '-'}</div>
+                </div>
               </div>
             ) },
-            { header: 'Kss', className: 'text-center font-black', render: r => r.count },
-            { header: 'Selisih', className: 'text-right font-black text-emerald', render: r => '+' + formatRp(r.selisihVsRs) }
+            { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Selisih', className: 'text-right text-emerald', render: r => '+' + formatRp(r.selisihVsRs) }
           ]} />
-          </div>
         </div>
         
-        <div className="chart-card" style={{ padding: '1.5rem', marginBottom: 0 }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 900, color: '#1e293b', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '24px', backgroundColor: '#f43f5e', borderRadius: '4px' }}></span>
+        <div className="premium-card">
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#1e293b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backgroundColor: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', borderRadius: '50%' }}>
+              <ArrowDownRight size={20} />
+            </div>
             Top 10 Defisit iDRG
           </h3>
-          <div style={{ flex: 1, overflowX: 'auto' }}>
           <MiniTable data={dashData.topDefisit} columns={[
-            { header: 'Kode & Deskripsi', className: 'font-black text-slate', render: r => (
-              <div>
-                <div style={{color: '#1e293b'}}>{r.code || '-'}</div>
-                <div style={{fontSize: '0.65rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px'}} title={r.desc}>{r.desc || '-'}</div>
+            { header: 'Peringkat & Deskripsi', className: 'text-left', render: (r, i) => (
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className={`rank-badge ${i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other'}`}>{i + 1}</span>
+                <div>
+                  <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '0.85rem' }}>{r.code || '-'}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }} title={r.desc}>{r.desc || '-'}</div>
+                </div>
               </div>
             ) },
-            { header: 'Kss', className: 'text-center font-black', render: r => r.count },
-            { header: 'Selisih', className: 'text-right font-black text-rose', render: r => '-' + formatRp(Math.abs(r.selisihVsRs)) }
+            { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Selisih', className: 'text-right text-rose', render: r => '-' + formatRp(Math.abs(r.selisihVsRs)) }
           ]} />
-          </div>
         </div>
-
       </div>
     </div>
   );
