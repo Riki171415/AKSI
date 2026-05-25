@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Users, FileText, Target, LogOut } from 'lucide-react';
+import { LayoutDashboard, Settings, Users, FileText, Target, LogOut, Stethoscope } from 'lucide-react';
 
 export default function Sidebar({ role, isCollapsed }) {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ export default function Sidebar({ role, isCollapsed }) {
     { path: '/dashboard', label: 'Analisis Klaim', icon: LayoutDashboard },
     { path: '/laporan', label: 'Laporan', icon: FileText },
     { path: '/positioning', label: 'Positioning RS', icon: Target },
+    { path: '/dpjp', label: 'Kompetensi per DPJP', icon: Stethoscope },
     { path: '/settings', label: 'Kompetensi RS', icon: Settings },
     ...(role === 'admin' ? [{ path: '/users', label: 'Manajemen User', icon: Users }] : [])
   ];

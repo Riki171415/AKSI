@@ -6,6 +6,7 @@ import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
 import Laporan from './pages/Laporan';
 import Positioning from './pages/Positioning';
+import Dpjp from './pages/Dpjp';
 import Layout from './components/Layout';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="laporan" element={<Laporan />} />
           <Route path="positioning" element={<Positioning />} />
+          <Route path="dpjp" element={<Dpjp />} />
           <Route path="settings" element={<Settings />} />
           <Route path="users" element={<UserManagement />} />
         </Route>

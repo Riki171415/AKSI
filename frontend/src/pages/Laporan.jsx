@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { exportToExcel } from '../utils/exportUtils';
 import { FileText, Download, Table as TableIcon, AlertCircle, TrendingUp, Activity, Layers, ActivitySquare, Ban, HelpCircle } from 'lucide-react';
 
 export default function Laporan() {
@@ -39,6 +40,65 @@ export default function Laporan() {
     return Math.round(val).toLocaleString('id-ID');
   };
 
+  const formatMonthIndo = (str) => {
+    if (!str) return str;
+    const parts = str.split('-');
+    if (parts.length !== 2) return str;
+    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  };
+
+  const handleExportExcel = () => {
+    if (!analysis || !analysis.reports) return;
+    const r = analysis.reports;
+    
+    const inaCols = [
+        { header: 'NO.', key: 'no', width: 5 },
+        { header: 'BULAN', key: 'bulan', width: 20 },
+        { header: 'SL 1 KASUS', key: 'sl1_c', width: 15 },
+        { header: 'SL 1 TARIF', key: 'sl1_t', width: 20 },
+        { header: 'SL 2 KASUS', key: 'sl2_c', width: 15 },
+        { header: 'SL 2 TARIF', key: 'sl2_t', width: 20 },
+        { header: 'SL 3 KASUS', key: 'sl3_c', width: 15 },
+        { header: 'SL 3 TARIF', key: 'sl3_t', width: 20 },
+        { header: 'TOTAL KASUS', key: 'tot_c', width: 15 },
+        { header: 'TOTAL TARIF', key: 'tot_t', width: 20 }
+    ];
+    const inaData = r.inaCbg.map((d, i) => ({
+        no: i + 1, bulan: d.monthKey,
+        sl1_c: d.sl1_c, sl1_t: d.sl1_t,
+        sl2_c: d.sl2_c, sl2_t: d.sl2_t,
+        sl3_c: d.sl3_c, sl3_t: d.sl3_t,
+        tot_c: d.total_c, tot_t: d.total_t
+    }));
+
+    const drgCols = [
+        { header: 'NO.', key: 'no', width: 5 },
+        { header: 'KODE DRG', key: 'drg', width: 15 },
+        { header: 'DESKRIPSI DRG', key: 'desc', width: 40 },
+        { header: 'JUMLAH KASUS', key: 'cases', width: 15 },
+        { header: 'TOTAL TARIF RS', key: 'tRs', width: 20 },
+        { header: 'TOTAL TARIF INA-CBGS', key: 'tIna', width: 20 },
+        { header: 'TOTAL TARIF IDRG', key: 'tIdrg', width: 20 },
+        { header: 'SELISIH (RS - INACBGS)', key: 's1', width: 25 },
+        { header: 'SELISIH (RS - IDRG)', key: 's2', width: 25 },
+        { header: 'SELISIH (IDRG - INACBGS)', key: 's3', width: 25 }
+    ];
+    const mapDrg = (d, i) => ({
+        no: i + 1, drg: d.drgCode, desc: d.drgDesc, cases: d.cases,
+        tRs: d.tRs, tIna: d.tIna, tIdrg: d.tIdrg,
+        s1: d.tRs - d.tIna, s2: d.tRs - d.tIdrg, s3: d.tIdrg - d.tIna
+    });
+
+    const sheets = [
+        { name: 'KLAIM INA-CBGS', columns: inaCols, data: inaData },
+        { name: 'IDRG RAWAT INAP', columns: drgCols, data: r.idrg_ri.map(mapDrg) },
+        { name: 'IDRG RAWAT JALAN', columns: drgCols, data: r.idrg_rj.map(mapDrg) }
+    ];
+    
+    exportToExcel('Laporan_Standar_V5', sheets);
+  };
+
   if (loading) {
     return <div style={{ padding: '3rem', textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>Memuat Data Laporan V5...</div>;
   }
@@ -76,7 +136,7 @@ export default function Laporan() {
           {r.inaCbg.map((d, i) => (
             <tr key={i}>
               <td className="text-center">{i + 1}</td>
-              <td className="font-black">{d.monthKey}</td>
+              <td className="font-black">{formatMonthIndo(d.monthKey)}</td>
               <td className="text-center">{formatNumber(d.sl0_c)}</td>
               <td className="text-center">{formatNumber(d.sl1_c)}</td>
               <td className="text-center">{formatNumber(d.sl2_c)}</td>
@@ -119,7 +179,7 @@ export default function Laporan() {
           {r.idrg.map((d, i) => (
             <tr key={i}>
               <td className="text-center">{i + 1}</td>
-              <td className="font-black">{d.monthKey}</td>
+              <td className="font-black">{formatMonthIndo(d.monthKey)}</td>
               <td className="text-center">{formatNumber(d.d_c)}</td>
               <td className="text-center">{formatNumber(d.m_c)}</td>
               <td className="text-center">{formatNumber(d.u_c)}</td>
@@ -232,7 +292,7 @@ export default function Laporan() {
           {r.gabungan.map((d, i) => (
             <tr key={i}>
               <td className="text-center">{i + 1}</td>
-              <td className="font-black text-center">{d.monthKey}</td>
+              <td className="font-black text-center">{formatMonthIndo(d.monthKey)}</td>
               <td className="text-right text-muted">{formatRupiah(d.rj_tRs)}</td>
               <td className="text-right text-muted">{formatRupiah(d.ri_tRs)}</td>
               
@@ -306,7 +366,7 @@ export default function Laporan() {
             </p>
           </div>
         </div>
-        <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
+        <button onClick={handleExportExcel} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
           <Download size={16} /> Export Excel
         </button>
       </div>

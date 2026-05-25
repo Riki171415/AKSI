@@ -1,0 +1,1 @@
+const mongoose = require('mongoose'); mongoose.connect('mongodb://localhost:27017/aksi_apci').then(() => { mongoose.connection.db.collection('analyses').find().sort({createdAt: -1}).limit(1).toArray().then(docs => { if(docs[0]) { console.log(docs[0].data.dashboard.tIna, docs[0].data.dashboard.tIdrg); } else console.log('no docs'); process.exit(); }) })

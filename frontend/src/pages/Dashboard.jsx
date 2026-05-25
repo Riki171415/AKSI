@@ -3,15 +3,17 @@ import axios from 'axios';
 import {
   PieChart, Users, Activity, User, BarChart3, TrendingUp, TrendingDown,
   Zap, Search, Stethoscope, ClipboardList, ActivitySquare, Layers,
-  Trash2, PlusCircle, RefreshCw, Upload
+  Trash2, PlusCircle, RefreshCw, Upload, Download
 } from 'lucide-react';
+import { exportChartToPNG } from '../utils/exportUtils';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell, PieChart as RePieChart, Pie } from 'recharts';
 
 export default function Dashboard() {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -43,27 +45,33 @@ export default function Dashboard() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) return;
-    await uploadDirectly(file, false);
+    if (!files || files.length === 0) return;
+    await uploadDirectly(files, false);
   };
 
-  const uploadDirectly = async (targetFile, appendMode = false) => {
+  const uploadDirectly = async (targetFiles, appendMode = false) => {
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', targetFile);
-    
     const savedSettings = localStorage.getItem('iDRG_RS_Config');
-    if (savedSettings) {
-      formData.append('rsConfig', savedSettings);
-    }
-
+    
     try {
       const token = localStorage.getItem('token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const url = `http://localhost:5000/api/analyze${appendMode ? '?mode=append' : ''}`;
-      const res = await axios.post(url, formData, config);
-      setResults(res.data);
-      setError('');
+      
+      let finalRes = null;
+      for (let i = 0; i < targetFiles.length; i++) {
+        const formData = new FormData();
+        formData.append('file', targetFiles[i]);
+        if (savedSettings) formData.append('rsConfig', savedSettings);
+        
+        const isAppend = appendMode || i > 0;
+        const url = `http://localhost:5000/api/analyze${isAppend ? '?mode=append' : ''}`;
+        finalRes = await axios.post(url, formData, config);
+      }
+      
+      if (finalRes) {
+          setResults(finalRes.data);
+          setError('');
+      }
     } catch(err) {
       if (err.response && err.response.status === 401) {
         setError('Sesi Anda telah berakhir, silakan login kembali.');
@@ -72,6 +80,8 @@ export default function Dashboard() {
       }
     } finally {
       setUploading(false);
+      setFiles([]);
+      if (uploadRef.current) uploadRef.current.value = null;
     }
   };
 
@@ -107,8 +117,16 @@ export default function Dashboard() {
           <h2 style={{ color: 'var(--primary)', marginBottom: '1rem' }}>Integrasi Data Klaim</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>{error || 'Silakan unggah file TXT klaim RS untuk memulai analisis.'}</p>
           <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-            <input type="file" accept=".txt" onChange={e => setFile(e.target.files[0])} style={{ padding: '1rem', border: '2px dashed var(--border)', borderRadius: '1rem', width: '100%', cursor: 'pointer' }} />
-            <button type="submit" className="btn-primary" disabled={uploading || !file} style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: 900, letterSpacing: '1px' }}>
+            <input 
+              type="file" 
+              accept=".txt" 
+              multiple 
+              ref={uploadRef}
+              onChange={e => setFiles(Array.from(e.target.files))} 
+              style={{ padding: '1rem', border: '2px dashed var(--border)', borderRadius: '1rem', width: '100%', cursor: 'pointer' }} 
+            />
+            {files.length > 0 && <p style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{files.length} file(s) dipilih</p>}
+            <button type="submit" className="btn-primary" disabled={uploading || files.length === 0} style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: 900, letterSpacing: '1px' }}>
               {uploading ? 'MEMPROSES DATA...' : 'UNGGAH & ANALISIS'}
             </button>
           </form>
@@ -136,6 +154,7 @@ export default function Dashboard() {
   
   const selInaRS = dashData.tIna - dashData.tRs;
   const selIdrgRS = dashData.tIdrg - dashData.tRs;
+  const selIdrgIna = dashData.tIdrg - dashData.tIna;
 
   const insights = [
     selInaRS < 0
@@ -147,6 +166,14 @@ export default function Dashboard() {
     { t: 'i', icon: '📊', txt: `${formatPct(dashData.tIna > 0 ? (dashData.cInaHigh / t) * 100 : 0)}% kasus INA > iDRG; ${formatPct(dashData.tIna > 0 ? (dashData.cIdrgHigh / t) * 100 : 0)}% kasus iDRG > INA.` },
     { t: 'i', icon: '🏥', txt: `Komposisi: ${formatPct(ranapPct)}% Rawat Inap (${(dashData.ranapCount || 0).toLocaleString()}) vs ${formatPct(100 - ranapPct)}% Rawat Jalan (${rajalCount.toLocaleString()} kasus).` }
   ];
+
+  const formatMonthIndo = (str) => {
+    if (!str) return str;
+    const parts = str.split('-');
+    if (parts.length !== 2) return str;
+    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  };
 
   const dp = dashData.dischargeStats || {};
   const dischargePie = [
@@ -162,6 +189,65 @@ export default function Dashboard() {
     { value: t > 0 ? (dashData.cIdrgHigh / t) * 100 : 0, color: '#f97316', label: 'IDRG > INA' },
     { value: t > 0 ? (dashData.cEq / t) * 100 : 0, color: '#94a3b8', label: 'Sama Besar' }
   ];
+
+  // Kompetensi Layanan calculations
+  const kompetensiSummary = results.summary || {};
+  const tCompVol = (kompetensiSummary.patientsWithinCompetency || 0) + (kompetensiSummary.patientsOutsideCompetency || 0);
+  const pctWithinVol = tCompVol > 0 ? (kompetensiSummary.patientsWithinCompetency / tCompVol) * 100 : 0;
+  const pctOutsideVol = tCompVol > 0 ? (kompetensiSummary.patientsOutsideCompetency / tCompVol) * 100 : 0;
+  
+  let totalPotensiLoss = 0;
+  let topLossGroups = [];
+  
+  if (results.kelompokLayananData) {
+    const sortedByLoss = [...results.kelompokLayananData]
+      .filter(d => d.tidak_sesuai_t > 0)
+      .sort((a,b) => b.tidak_sesuai_t - a.tidak_sesuai_t);
+      
+    topLossGroups = sortedByLoss.slice(0, 5).map(d => ({
+      name: d.name.length > 20 ? d.name.substring(0, 20) + '...' : d.name,
+      fullName: d.name,
+      Loss: d.tidak_sesuai_t,
+      Volume: d.tidak_sesuai_c
+    }));
+    
+    totalPotensiLoss = results.kelompokLayananData.reduce((acc, curr) => acc + curr.tidak_sesuai_t, 0);
+  }
+
+  const levelAgg = {
+    DASAR: { count: 0, tIna: 0, tIdrg: 0, color: '#0d9488' },
+    MADYA: { count: 0, tIna: 0, tIdrg: 0, color: '#38bdf8' },
+    UTAMA: { count: 0, tIna: 0, tIdrg: 0, color: '#e11d48' },
+    PARIPURNA: { count: 0, tIna: 0, tIdrg: 0, color: '#4f46e5' },
+    BELUM_ADA_MAPPING: { count: 0, tIna: 0, tIdrg: 0, color: '#94a3b8' }
+  };
+  let totalCompVolAgg = 0;
+
+  if (results?.kelompokLayananData) {
+    results.kelompokLayananData.forEach(r => {
+      if (r.comps) {
+        Object.keys(levelAgg).forEach(k => {
+           if (r.comps[k]) {
+             levelAgg[k].count += r.comps[k].count || 0;
+             levelAgg[k].tIna += r.comps[k].tIna || 0;
+             levelAgg[k].tIdrg += r.comps[k].tIdrg || 0;
+             totalCompVolAgg += r.comps[k].count || 0;
+           }
+        });
+      }
+    });
+  }
+
+  const donutLevelData = Object.keys(levelAgg)
+    .filter(k => levelAgg[k].count > 0)
+    .map(k => ({
+      name: k.replace(/_/g, ' '),
+      value: levelAgg[k].count,
+      pct: totalCompVolAgg > 0 ? (levelAgg[k].count / totalCompVolAgg) * 100 : 0,
+      color: levelAgg[k].color,
+      tIna: levelAgg[k].tIna,
+      tIdrg: levelAgg[k].tIdrg
+    }));
 
   const renderDoughnut = (dataList) => {
     let offset = 0;
@@ -259,90 +345,238 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
-        {[
-          { label: 'Total Kasus', value: t.toLocaleString(), sub: `${(dashData.ranapCount || 0).toLocaleString()} RI + ${rajalCount.toLocaleString()} RJ`, c: '#334155', icon: <Users size={16} /> },
-          { label: 'Rawat Inap', value: (dashData.ranapCount || 0).toLocaleString(), sub: `${formatPct(ranapPct)}% dari total`, c: '#0d9488', icon: <Activity size={16} /> },
-          { label: 'Rawat Jalan', value: rajalCount.toLocaleString(), sub: `${formatPct(100 - ranapPct)}% dari total`, c: '#10b981', icon: <User size={16} /> },
-          { label: 'Rata-rata LOS', value: `${formatPct(dashData.avgLos)} Hari`, sub: 'Length of Stay', c: '#8b5cf6', icon: <Stethoscope size={16} /> },
-          { label: 'Total Tarif RS', value: formatRp(dashData.tRs, true), sub: `Avg ${formatRp(dashData.tRs / t, true)}/ep`, c: '#94a3b8', icon: <BarChart3 size={16} /> },
-          { label: 'Selisih INA-RS', value: (selInaRS >= 0 ? '+' : '') + formatRp(selInaRS, true), sub: selInaRS >= 0 ? 'Surplus' : 'Defisit', c: selInaRS >= 0 ? '#10b981' : '#e11d48', icon: <TrendingUp size={16} /> },
-          { label: 'Selisih iDRG-RS', value: (selIdrgRS >= 0 ? '+' : '') + formatRp(selIdrgRS, true), sub: selIdrgRS >= 0 ? 'Surplus' : 'Defisit', c: selIdrgRS >= 0 ? '#10b981' : '#e11d48', icon: <TrendingUp size={16} /> },
-        ].map((k, i) => (
-          <div key={i} className="kpi-card">
-            <div className="kpi-top-bar" style={{ backgroundColor: k.c }}></div>
-            <div className="kpi-icon-box" style={{ backgroundColor: k.c }}>{k.icon}</div>
-            <div className="kpi-label">{k.label}</div>
-            <div className="kpi-value">{k.value}</div>
-            <div className="kpi-sub">{k.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* INSIGHTS */}
-      <div className="insight-block">
-        <div className="insight-header">
-          <Zap size={24} />
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white' }}>Insight Analisis Otomatis</h3>
-            <p style={{ margin: 0, fontSize: '0.7rem', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '1px' }}>Temuan Kunci dari Efisiensi Koding</p>
-          </div>
-        </div>
-        <div className="insight-body">
-          <div className="insight-grid">
-            {insights.map((ins, i) => (
-              <div key={i} className="insight-item">
-                <div className="insight-line" style={{ backgroundColor: ins.t === 'w' ? '#e11d48' : ins.t === 's' ? '#10b981' : '#0d9488' }}></div>
-                <div className="insight-icon" style={{ backgroundColor: ins.t === 'w' ? '#ffe4e6' : ins.t === 's' ? '#d1fae5' : '#ccfbf1', color: ins.t === 'w' ? '#e11d48' : ins.t === 's' ? '#10b981' : '#0d9488' }}>
-                  {ins.icon}
-                </div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)', lineHeight: 1.5 }}>
-                  {ins.txt}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* BIG CARDS */}
-      <div className="big-card-grid">
-        <div className="big-card">
-          <div className="kpi-top-bar" style={{ backgroundColor: '#0d9488' }}></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Total INA-CBG</span>
-            <div style={{ backgroundColor: '#ccfbf1', padding: '0.5rem', borderRadius: '0.5rem', color: '#0d9488' }}><Search size={16} /></div>
-          </div>
-          <h2 style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#1e293b', margin: 0, wordBreak: 'break-word' }}>{formatRp(dashData.tIna)}</h2>
-          <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', margin: '0.5rem 0 0 0', textTransform: 'uppercase' }}>Rata-rata {formatRp(dashData.rataIna)} per kasus</p>
-        </div>
+      {/* PREMIUM SCORECARDS (3x3 GRID) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
         
-        <div className="big-card">
-          <div className="kpi-top-bar" style={{ backgroundColor: '#0ea5e9' }}></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Total iDRG</span>
-            <div style={{ backgroundColor: '#e0f2fe', padding: '0.5rem', borderRadius: '0.5rem', color: '#0ea5e9' }}><Search size={16} /></div>
+        {/* ROW 1: Volumes (White Cards with subtle shadows) */}
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ backgroundColor: '#f0fdfa', color: '#0d9488', padding: '0.5rem', borderRadius: '8px' }}><Users size={18} /></div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em' }}>TOTAL KLAIM TERDETEKSI</div>
           </div>
-          <h2 style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#1e293b', margin: 0, wordBreak: 'break-word' }}>{formatRp(dashData.tIdrg)}</h2>
-          <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', margin: '0.5rem 0 0 0', textTransform: 'uppercase' }}>Rata-rata {formatRp(dashData.rataIdrg)} per kasus</p>
+          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            {t.toLocaleString()}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, color: '#475569' }}>SELURUH LAYANAN</div>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic', fontWeight: 600 }}>Inbound Clinical Traffic</div>
+          </div>
+          <Users size={120} color="#f8fafc" style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.8, zIndex: 0 }} />
         </div>
 
-        <div className="big-card">
-          <div className="kpi-top-bar" style={{ backgroundColor: isSelPos ? '#10b981' : '#e11d48' }}></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Selisih Finansial Total (iDRG - INA)</span>
-            <div style={{ backgroundColor: '#f1f5f9', padding: '0.5rem', borderRadius: '0.5rem', color: '#64748b' }}><Search size={16} /></div>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ backgroundColor: '#f0f9ff', color: '#0284c7', padding: '0.5rem', borderRadius: '8px' }}><Activity size={18} /></div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em' }}>KASUS RAWAT INAP (RI)</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <h2 style={{ fontSize: 'clamp(1.5rem, 2vw, 2.5rem)', fontWeight: 900, color: isSelPos ? '#10b981' : '#e11d48', margin: 0, wordBreak: 'break-word' }}>
-              {isSelPos ? '+' : ''}{formatRp(dashData.selisihTotal)}
-            </h2>
-            <div style={{ backgroundColor: isSelPos ? '#d1fae5' : '#ffe4e6', color: isSelPos ? '#047857' : '#be123c', padding: '0.25rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              {isSelPos ? <TrendingUp size={14} /> : <TrendingDown size={14} />} {formatPct(dashData.tIna > 0 ? (Math.abs(dashData.selisihTotal) / dashData.tIna * 100) : 0)}%
+          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            {(dashData.ranapCount || 0).toLocaleString()}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, color: '#475569' }}>ADMISSION CARE</div>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic', fontWeight: 600 }}>High Maturity Cases</div>
+          </div>
+          <Activity size={120} color="#f8fafc" style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.8, zIndex: 0 }} />
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ backgroundColor: '#fff1f2', color: '#e11d48', padding: '0.5rem', borderRadius: '8px' }}><ActivitySquare size={18} /></div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em' }}>KASUS RAWAT JALAN (RJ)</div>
+          </div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            {rajalCount.toLocaleString()}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, color: '#475569' }}>AMBULATORY CARE</div>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic', fontWeight: 600 }}>Primary Care Traffic</div>
+          </div>
+          <ActivitySquare size={120} color="#f8fafc" style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.8, zIndex: 0 }} />
+        </div>
+
+        {/* ROW 2: Revenues / Costs (White Cards with colored borders) */}
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', borderLeft: '6px solid #0d9488' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>TOTAL TARIF INA-CBG</div>
+          <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em', wordBreak: 'break-word' }}>
+            {formatRp(dashData.tIna)}
+          </div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0d9488', textTransform: 'uppercase' }}>EXISTING BILLING STANDARD</div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', borderLeft: '6px solid #e11d48' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>TOTAL TARIF IDRG</div>
+          <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#e11d48', marginBottom: '1rem', letterSpacing: '-0.02em', wordBreak: 'break-word' }}>
+            {formatRp(dashData.tIdrg)}
+          </div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#e11d48', textTransform: 'uppercase' }}>SIMULASI PROYEKSI IDRG</div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', borderLeft: '6px solid #1e293b' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>TOTAL BIAYA RIIL RS</div>
+          <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em', wordBreak: 'break-word' }}>
+            {formatRp(dashData.tRs)}
+          </div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>HOSPITAL ACTUAL COSTS</div>
+        </div>
+
+        {/* ROW 3: Margins & Variances (Solid Colored Cards) */}
+        <div style={{ backgroundColor: '#0d9488', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 10px 25px rgba(13,148,136,0.3)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.8)', letterSpacing: '0.05em', marginBottom: '0.5rem', position: 'relative', zIndex: 1 }}>SELISIH INA-CBG VS RS</div>
+          <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#ffffff', marginBottom: '1rem', letterSpacing: '-0.02em', wordBreak: 'break-word', position: 'relative', zIndex: 1 }}>
+            {(selInaRS >= 0 ? '+' : '') + formatRp(selInaRS)}
+          </div>
+          <div style={{ display: 'inline-block', backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, color: '#ffffff', position: 'relative', zIndex: 1 }}>
+            PERFORMA LABA RUGI AKTUAL
+          </div>
+          <TrendingUp size={120} color="#ffffff" style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.1, zIndex: 0 }} />
+        </div>
+
+        <div style={{ backgroundColor: '#e11d48', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 10px 25px rgba(225,29,72,0.3)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.8)', letterSpacing: '0.05em', marginBottom: '0.5rem', position: 'relative', zIndex: 1 }}>SELISIH IDRG VS RS</div>
+          <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#ffffff', marginBottom: '1rem', letterSpacing: '-0.02em', wordBreak: 'break-word', position: 'relative', zIndex: 1 }}>
+            {(selIdrgRS >= 0 ? '+' : '') + formatRp(selIdrgRS)}
+          </div>
+          <div style={{ display: 'inline-block', backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, color: '#ffffff', position: 'relative', zIndex: 1 }}>
+            SIMULASI LABA RUGI iDRG
+          </div>
+          <Zap size={120} color="#ffffff" style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.1, zIndex: 0 }} />
+        </div>
+
+        <div style={{ backgroundColor: '#0f172a', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 10px 25px rgba(15,23,42,0.5)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.8)', letterSpacing: '0.05em', marginBottom: '0.5rem', position: 'relative', zIndex: 1 }}>iDRG GAIN VS INA-CBG</div>
+          <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2rem)', fontWeight: 900, color: '#ffffff', marginBottom: '1rem', letterSpacing: '-0.02em', wordBreak: 'break-word', position: 'relative', zIndex: 1 }}>
+            {(selIdrgIna >= 0 ? '+' : '') + formatRp(selIdrgIna)}
+          </div>
+          <div style={{ display: 'inline-block', backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, color: '#ffffff', position: 'relative', zIndex: 1 }}>
+            POTENSI REVENUE SHIFT
+          </div>
+          <PieChart size={120} color="#ffffff" style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05, zIndex: 0 }} />
+        </div>
+      </div>
+
+      {/* KOMPETENSI LAYANAN INTELLIGENCE */}
+      <div className="chart-card" id="dashboard-kompetensi-chart" style={{ marginBottom: '2rem', padding: '2rem', backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.03)' }}>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+          
+          {/* Kiri: Donut Chart Distribusi Kompetensi Overall */}
+          <div style={{ backgroundColor: '#ffffff', border: '1px solid #f1f5f9', borderRadius: '16px', padding: '1.5rem' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 900, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <PieChart size={18} color="#0d9488" /> DISTRIBUSI KOMPETENSI OVERALL
+            </h4>
+            <div style={{ width: '100%', height: '300px', minWidth: 0, minHeight: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={donutLevelData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, pct }) => `${name}: ${pct.toFixed(1)}%`}
+                    labelLine={true}
+                  >
+                    {donutLevelData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name, props) => [`${value} Kasus (${props.payload.pct.toFixed(1)}%)`, name]} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </RePieChart>
+              </ResponsiveContainer>
             </div>
           </div>
-          <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', margin: '0.5rem 0 0 0', textTransform: 'uppercase' }}>Potensi {isSelPos ? 'Surplus' : 'Defisit'} terhadap klaim INA-CBG awal.</p>
+
+          {/* Kanan: Clinical Snapshot Cards */}
+          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 900, color: '#0f172a', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+               CLINICAL SNAPSHOT
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              {donutLevelData.map((lvl, idx) => (
+                <div key={idx} style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>{lvl.name}</div>
+                    <div style={{ backgroundColor: `${lvl.color}15`, color: lvl.color, padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>{lvl.pct.toFixed(1)}%</div>
+                  </div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '1rem' }}>
+                    {lvl.value.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0d9488' }}>Cases</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #e2e8f0', paddingTop: '0.75rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#94a3b8' }}>TOTAL INA-CBG</div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1e293b' }}>{formatRp(lvl.tIna, true)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#0d9488' }}>TOTAL IDRG</div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0d9488' }}>{formatRp(lvl.tIdrg, true)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bawah: Insight & Top 5 Loss */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #f1f5f9' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {topLossGroups.length > 0 ? (
+              <div style={{ backgroundColor: '#fff1f2', borderLeft: '4px solid #e11d48', padding: '1.25rem', borderRadius: '0 8px 8px 0' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: '#be123c', fontSize: '0.9rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <ActivitySquare size={16} /> Insight Kebocoran Utama
+                </h4>
+                <p style={{ margin: 0, color: '#881337', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                  <strong>{topLossGroups[0]?.name}</strong> menjadi penyumbang potensi loss terbesar dengan nilai <strong>{formatRp(topLossGroups[0]?.Loss)}</strong> dari {topLossGroups[0]?.Volume} kasus yang dilayani di luar level kompetensi RS. Disarankan evaluasi DPJP dan panduan rujukan khusus untuk kelompok layanan ini.
+                </p>
+              </div>
+            ) : (
+              <div style={{ backgroundColor: '#ecfdf5', borderLeft: '4px solid #10b981', padding: '1.25rem', borderRadius: '0 8px 8px 0' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: '#047857', fontSize: '0.9rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <ActivitySquare size={16} /> Insight Kompetensi
+                </h4>
+                <p style={{ margin: 0, color: '#065f46', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                  Luar biasa! Tidak ada kasus yang dilayani di luar level kompetensi RS. Kinerja klinis sudah sangat optimal.
+                </p>
+              </div>
+            )}
+            
+            <button onClick={() => exportChartToPNG('dashboard-kompetensi-chart', 'Kompetensi_Layanan')} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', padding: '0.75rem 1rem', alignSelf: 'flex-start' }}>
+              <Download size={14} /> EXPORT INSIGHT DASHBOARD
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#475569', marginBottom: '1rem', textAlign: 'center', textTransform: 'uppercase' }}>Top 5 Potensi Loss Berdasarkan Kelompok Layanan (iDRG)</h4>
+            <div style={{ flex: 1, minHeight: '200px', minWidth: 0 }}>
+              {topLossGroups.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topLossGroups} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                    <XAxis type="number" tickFormatter={(val) => `Rp ${(val/1000000).toFixed(0)}Jt`} stroke="#cbd5e1" fontSize={10} />
+                    <YAxis type="category" dataKey="name" width={140} stroke="#64748b" fontSize={11} fontWeight={700} />
+                    <Tooltip 
+                      formatter={(value) => formatRp(value)} 
+                      cursor={{fill: 'rgba(226, 232, 240, 0.4)'}}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                    />
+                    <Bar dataKey="Loss" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={24}>
+                      {topLossGroups.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index === 0 ? '#e11d48' : '#fb7185'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                  Tidak ada potensi loss tercatat.
+                </div>
+              )}
+            </div>
+          </div>
+          
         </div>
       </div>
 
@@ -389,10 +623,15 @@ export default function Dashboard() {
       </div>
 
       {/* MONTHLY CHART */}
-      <div className="chart-card">
-        <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <BarChart3 size={20} className="text-teal" /> Komparasi & Tren Bulanan
-        </h3>
+      <div className="chart-card" id="dashboard-monthly-chart">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              <BarChart3 size={20} className="text-teal" /> Komparasi & Tren Bulanan
+            </h3>
+            <button onClick={() => exportChartToPNG('dashboard-monthly-chart', 'Tren_Bulanan_Dashboard')} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', padding: '0.4rem 0.75rem' }}>
+              <Download size={14} /> Save PNG
+            </button>
+        </div>
         
         <div className="chart-container">
           <div style={{ position: 'absolute', top: '65%', left: 0, right: 0, borderBottom: '1px dashed #cbd5e1', zIndex: 0 }}></div>
@@ -408,10 +647,22 @@ export default function Dashboard() {
              const hSelPos = !isDef ? Math.max((m.selisih / maxV) * 100, 1) : 0;
              const hSelNeg = isDef ? Math.max((Math.abs(m.selisih) / maxN) * 100, 1) : 0;
              
+             const shortNum = (num) => {
+                 if (!num) return '';
+                 const abs = Math.abs(num);
+                 if (abs >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'M';
+                 if (abs >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'Jt';
+                 if (abs >= 1e3) return (num / 1e3).toFixed(0) + 'K';
+                 return num.toString();
+             };
+               
+             const lblStyle = { position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.55rem', fontWeight: 900, color: '#64748b' };
+             const lblNegStyle = { position: 'absolute', bottom: '-18px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.55rem', fontWeight: 900, color: '#e11d48' };
+             
              return (
                <div key={i} className="chart-bar-group">
                  <div className="bar-tooltip">
-                   <div style={{ fontWeight: 900, borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.25rem', marginBottom: '0.25rem' }}>{m.label}</div>
+                   <div style={{ fontWeight: 900, borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.25rem', marginBottom: '0.25rem' }}>{formatMonthIndo(m.label)}</div>
                    <div>RS: {formatRp(m.tarifRs, true)}</div>
                    <div style={{ color: '#2dd4bf' }}>INA: {formatRp(m.inacbg, true)}</div>
                    <div style={{ color: '#fb7185' }}>iDRG: {formatRp(m.idrg, true)}</div>
@@ -421,20 +672,30 @@ export default function Dashboard() {
                  </div>
                  
                  <div className="chart-bar-pos" style={{ height: '65%' }}>
-                   <div className="bar-part bg-slate" style={{ height: `${hRs}%`, borderRadius: '4px 4px 0 0' }}></div>
-                   <div className="bar-part bg-teal" style={{ height: `${hIna}%`, borderRadius: '4px 4px 0 0', boxShadow: '0 0 10px rgba(13,148,136,0.3)' }}></div>
-                   <div className="bar-part bg-rose" style={{ height: `${hIdrg}%`, borderRadius: '4px 4px 0 0', boxShadow: '0 0 10px rgba(225,29,72,0.3)' }}></div>
-                   <div className="bar-part" style={{ height: `${hSelPos}%`, borderRadius: '4px 4px 0 0', backgroundColor: isDef ? 'transparent' : '#10b981', boxShadow: '0 0 10px rgba(16,185,129,0.3)' }}></div>
+                   <div className="bar-part bg-slate" style={{ height: `${hRs}%`, borderRadius: '4px 4px 0 0', position: 'relative' }}>
+                     {hRs > 5 && <span style={lblStyle}>{shortNum(m.tarifRs)}</span>}
+                   </div>
+                   <div className="bar-part bg-teal" style={{ height: `${hIna}%`, borderRadius: '4px 4px 0 0', boxShadow: '0 0 10px rgba(13,148,136,0.3)', position: 'relative' }}>
+                     {hIna > 5 && <span style={lblStyle}>{shortNum(m.inacbg)}</span>}
+                   </div>
+                   <div className="bar-part bg-rose" style={{ height: `${hIdrg}%`, borderRadius: '4px 4px 0 0', boxShadow: '0 0 10px rgba(225,29,72,0.3)', position: 'relative' }}>
+                     {hIdrg > 5 && <span style={lblStyle}>{shortNum(m.idrg)}</span>}
+                   </div>
+                   <div className="bar-part" style={{ height: `${hSelPos}%`, borderRadius: '4px 4px 0 0', backgroundColor: isDef ? 'transparent' : '#10b981', boxShadow: '0 0 10px rgba(16,185,129,0.3)', position: 'relative' }}>
+                     {hSelPos > 5 && !isDef && <span style={{...lblStyle, color: '#10b981'}}>{shortNum(m.selisih)}</span>}
+                   </div>
                  </div>
                  
                  <div className="chart-bar-neg" style={{ height: '35%' }}>
                    <div className="bar-part" style={{ height: '100%' }}></div>
                    <div className="bar-part" style={{ height: '100%' }}></div>
                    <div className="bar-part" style={{ height: '100%' }}></div>
-                   <div className="bar-part" style={{ height: `${hSelNeg}%`, borderRadius: '0 0 4px 4px', backgroundColor: !isDef ? 'transparent' : '#e11d48', boxShadow: '0 0 10px rgba(225,29,72,0.3)' }}></div>
+                   <div className="bar-part" style={{ height: `${hSelNeg}%`, borderRadius: '0 0 4px 4px', backgroundColor: !isDef ? 'transparent' : '#e11d48', boxShadow: '0 0 10px rgba(225,29,72,0.3)', position: 'relative' }}>
+                     {hSelNeg > 5 && isDef && <span style={lblNegStyle}>{shortNum(Math.abs(m.selisih))}</span>}
+                   </div>
                  </div>
                  
-                 <div style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: '#94a3b8', marginTop: '1rem' }}>{m.label}</div>
+                 <div style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: '#94a3b8', marginTop: '1rem' }}>{formatMonthIndo(m.label)}</div>
                </div>
              );
           })}

@@ -68,6 +68,7 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      <div></div>
       <div className="login-box" style={{ maxWidth: '400px' }}>
         <div className="logo-container" style={{ justifyContent: 'center', marginBottom: '2rem' }}>
           <img src="/logo_apci.png" alt="APCI Logo" style={{ height: '80px' }} />
@@ -171,6 +172,9 @@ export default function Login() {
           </div>
         </div>
       )}
+      <div style={{ position: 'relative', marginTop: 'auto', paddingTop: '2rem', paddingBottom: '1.5rem', width: '100%', textAlign: 'center', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.02em', zIndex: 10 }}>
+        Copyright &copy; APCI Asosiasi Praktisi Casemix Indonesia
+      </div>
     </div>
   );
 }

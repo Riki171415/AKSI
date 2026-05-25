@@ -4,11 +4,27 @@ const readline = require('readline');
 const { icdMap, icdDescMap, competencies } = require('../utils/csvLoader');
 const { hospitalSettings } = require('../store');
 
+let fallbackDict = {};
+try {
+    fallbackDict = require('../data/icd_fallback.json');
+} catch(e) {
+    console.error("Could not load fallback dictionary");
+}
+
 const upload = multer({ dest: 'uploads/' });
 
 exports.uploadMiddleware = upload.single('file');
 
+const parseTarif = (valStr) => {
+    if (!valStr) return 0;
+    let s = valStr.toString().trim().replace(/['"]/g, '');
+    s = s.replace(/[,.]00$/, '');
+    s = s.replace(/[,.]/g, '');
+    return parseFloat(s) || 0;
+};
+
 const levelValues = {
+    "Belum Ada Mapping": 0,
     "Dasar": 1,
     "Madya": 2,
     "Utama": 3,
@@ -79,6 +95,7 @@ exports.analyzeTxt = async (req, res) => {
     // Maps for Top 10 Defisit/Surplus
     let idrgSurplus = {};
     let idrgDefisit = {};
+    let dpjpMap = {};
     let inaSurplus = {};
     let inaDefisit = {};
     
@@ -91,8 +108,8 @@ exports.analyzeTxt = async (req, res) => {
         mdcMap[c] = {
             name: c,
             count: 0, tInacbg: 0, tIdrg: 0,
-            sesuai_c: 0, sesuai_t: 0,
-            tidak_sesuai_c: 0, tidak_sesuai_t: 0,
+            sesuai_c: 0, sesuai_t: 0, sesuai_ina: 0,
+            tidak_sesuai_c: 0, tidak_sesuai_t: 0, tidak_sesuai_ina: 0,
             comps: {
                 DASAR: { count: 0, tIna: 0, tIdrg: 0, icds: {} },
                 MADYA: { count: 0, tIna: 0, tIdrg: 0, icds: {} },
@@ -121,6 +138,14 @@ exports.analyzeTxt = async (req, res) => {
     
     let isHeader = true;
     let headers = [];
+
+    const maskName = (name) => {
+        if (!name || name === 'Unknown') return 'Unknown';
+        return name.split(' ').map(word => {
+            if (word.length <= 2) return word;
+            return word[0] + '*'.repeat(word.length - 2) + word[word.length - 1];
+        }).join(' ');
+    };
     
     for await (const line of rl) {
         if (!line.trim()) continue;
@@ -160,6 +185,15 @@ exports.analyzeTxt = async (req, res) => {
         if (dischargeIdx === -1) dischargeIdx = headers.indexOf('STATUS_PULANG');
         if (dischargeIdx === -1) dischargeIdx = headers.indexOf('CARA_PULANG');
         
+        let dpjpIdx = -1;
+        for (let i = 0; i < headers.length; i++) {
+            const h = headers[i].trim().toUpperCase();
+            if (h === 'DPJP' || h === 'NAMA_DOKTER' || h === 'NAMA DOKTER' || h === 'DOKTER_PJ' || h === 'DOKTER' || h === 'NAMA_DPJP' || h === 'DOKTER_DPJP') {
+                dpjpIdx = i;
+                break;
+            }
+        }
+        
         if (diagIdx === -1) continue;
         
         const diaglist = (columns[diagIdx] || '').split(';');
@@ -178,14 +212,15 @@ exports.analyzeTxt = async (req, res) => {
             if (pt) procFreq[pt] = (procFreq[pt] || 0) + 1;
         }
         
-        const patientName = nameIdx !== -1 ? columns[nameIdx] : 'Unknown';
+        const patientRaw = nameIdx !== -1 ? columns[nameIdx] : 'Unknown';
+        const patientName = maskName(patientRaw.trim());
         const mrn = mrnIdx !== -1 ? columns[mrnIdx] : 'Unknown';
         const sep = sepIdx !== -1 ? columns[sepIdx] : 'Unknown';
         
         const mdcNum = idrgMdcIdx !== -1 ? columns[idrgMdcIdx] : '';
         const drgCode = idrgDrgCodeIdx !== -1 ? columns[idrgDrgCodeIdx] : '';
         const drgDesc = idrgDrgDescIdx !== -1 ? columns[idrgDrgDescIdx] : '';
-        const topUp = idrgTopUpIdx !== -1 ? parseFloat(columns[idrgTopUpIdx]) || 0 : 0;
+        const topUp = idrgTopUpIdx !== -1 ? parseTarif(columns[idrgTopUpIdx]) : 0;
         
         let isBedah = false;
         if (drgCode && drgCode.length >= 4) {
@@ -208,13 +243,13 @@ exports.analyzeTxt = async (req, res) => {
         }
         
         const tarifValStr = (tarifIdx !== -1 && columns[tarifIdx]) ? columns[tarifIdx] : "0";
-        const tarif = parseFloat(tarifValStr) || 0;
+        const tarif = parseTarif(tarifValStr);
         
         const trsValStr = (tarifRsIdx !== -1 && columns[tarifRsIdx]) ? columns[tarifRsIdx] : "0";
-        const tarifRs = parseFloat(trsValStr) || 0;
+        const tarifRs = parseTarif(trsValStr);
         
         const idrgTarifValStr = (idrgTarifIdx !== -1 && columns[idrgTarifIdx]) ? columns[idrgTarifIdx] : "0";
-        const tarifIdrgRaw = (idrgTarifIdx !== -1) ? (parseFloat(idrgTarifValStr) || 0) : tarif;
+        const tarifIdrgRaw = (idrgTarifIdx !== -1) ? parseTarif(idrgTarifValStr) : tarif;
         
         const birthDateStr = birthDateIdx !== -1 ? columns[birthDateIdx] : '';
         const sexVal = sexIdx !== -1 ? columns[sexIdx] : '';
@@ -239,14 +274,37 @@ exports.analyzeTxt = async (req, res) => {
             }
         }
         
-        const inacbgCode = inacbgIdx !== -1 ? columns[inacbgIdx] : '';
+        const inacbgCode = (inacbgIdx !== -1 && columns[inacbgIdx]) ? columns[inacbgIdx].trim() : '';
         const inacbgDesc = inacbgDescIdx !== -1 ? columns[inacbgDescIdx] : '';
-        const ptd = ptdIdx !== -1 ? columns[ptdIdx] : '1'; 
-        const isRI = ptd === '1' || ptd.toLowerCase().includes('inap');
+        let ptd = ptdIdx !== -1 ? columns[ptdIdx] : ''; 
+        let isRI;
+        if (ptd) {
+            isRI = ptd === '1' || ptd.toLowerCase().includes('inap');
+        } else {
+            isRI = inacbgCode ? !(inacbgCode.endsWith('-0') || inacbgCode.endsWith('0')) : true;
+        }
         
         const dStat = dischargeIdx !== -1 ? columns[dischargeIdx].trim() : '';
         if (['1', '2', '3', '4'].includes(dStat)) dischargeStats[dStat]++;
         else dischargeStats["5"]++;
+        
+        const dpjpNameRaw = dpjpIdx !== -1 ? columns[dpjpIdx] : '';
+        let dpjpRealName = dpjpNameRaw ? dpjpNameRaw.trim() : 'Tidak Diketahui';
+        if (dpjpRealName === '-' || dpjpRealName === '' || dpjpRealName === '*') dpjpRealName = 'Tidak Diketahui';
+        
+        let dpjpName = dpjpRealName !== 'Tidak Diketahui' ? maskName(dpjpRealName) : 'Tidak Diketahui';
+        
+        if (!dpjpMap[dpjpRealName]) {
+            dpjpMap[dpjpRealName] = {
+                name: dpjpName,
+                realName: dpjpRealName,
+                count: 0,
+                sesuai_c: 0, sesuai_t: 0, sesuai_ina: 0,
+                tidak_sesuai_c: 0, tidak_sesuai_t: 0, tidak_sesuai_ina: 0,
+                comps: {}
+            };
+        }
+        dpjpMap[dpjpRealName].count++;
         
         if (isRI) ranapCount++;
         totalTarifRs += tarifRs;
@@ -312,6 +370,7 @@ exports.analyzeTxt = async (req, res) => {
         let patientNeededCompetencies = [];
         let groupNamesForPatient = new Set();
         
+        let highestComp = null;
         for (const icd of allIcds) {
             const cleanIcd = icd.trim();
             let needed = icdMap.get(cleanIcd) || icdMap.get(cleanIcd.replace('.', ''));
@@ -323,13 +382,37 @@ exports.analyzeTxt = async (req, res) => {
                     if (gNameLower.includes('neonatus') && ageInDays >= 29) continue;
                     if ((gNameLower.includes('obgyn') || gNameLower.includes('kandungan') || gNameLower.includes('obstetri')) && sexVal !== '2') continue;
                     
-                    patientNeededCompetencies.push(n);
-                    groupNamesForPatient.add(n.group); // store original case
+                    if (!highestComp || n.levelInt > highestComp.levelInt) {
+                        highestComp = n;
+                    }
                 }
             }
         }
         
+        if (highestComp) {
+            patientNeededCompetencies.push(highestComp);
+            groupNamesForPatient.add(highestComp.group);
+        }
+        
         const isUnmapped = !isUngroupable && patientNeededCompetencies.length === 0;
+        
+        if (isUnmapped) {
+            const primaryIcd = allIcds.length > 0 ? allIcds[0].trim() : 'UNKNOWN';
+            let desc = fallbackDict[primaryIcd];
+            if (!desc && primaryIcd.includes('.')) {
+                desc = fallbackDict[primaryIcd.split('.')[0]];
+            }
+            if (!desc) desc = 'Tidak ada deskripsi';
+            
+            patientNeededCompetencies.push({
+                code: primaryIcd,
+                desc: desc,
+                group: "KASUS BELUM MAPPING",
+                level: "Belum Ada Mapping",
+                levelInt: 0
+            });
+            groupNamesForPatient.add("KASUS BELUM MAPPING");
+        }
         
         if (isUngroupable && reports.ungroupable.length < 500) {
             reports.ungroupable.push({ mrn, sep, nama: patientName, desc: drgDesc || inacbgCode, icd: diaglist.join('; '), type: typeLayanan, ket: 'Ungroupable' });
@@ -345,7 +428,7 @@ exports.analyzeTxt = async (req, res) => {
         let missingSet = new Set();
         
         for (const gName of groupNamesForPatient) {
-            let reqLevelStr = "Dasar";
+            let reqLevelStr = "Belum Ada Mapping";
             let reqLevelInt = 0;
             for (const reqComp of patientNeededCompetencies) {
                 if (reqComp.group === gName) {
@@ -356,8 +439,8 @@ exports.analyzeTxt = async (req, res) => {
                 }
             }
             if (reqLevelInt === 0) {
-                reqLevelInt = 1;
-                reqLevelStr = "Dasar";
+                reqLevelInt = 0;
+                reqLevelStr = "Belum Ada Mapping";
             }
             
             const rsLevelStr = myCompetencies[gName] || 'Belum Diatur';
@@ -377,9 +460,12 @@ exports.analyzeTxt = async (req, res) => {
             
             if (!mdcMap[gName]) {
                 mdcMap[gName] = {
-                    name: gName, count: 0, tInacbg: 0, tIdrg: 0, sesuai_c: 0, sesuai_t: 0, tidak_sesuai_c: 0, tidak_sesuai_t: 0,
+                    name: gName, count: 0, tInacbg: 0, tIdrg: 0, 
+                    sesuai_c: 0, sesuai_t: 0, sesuai_ina: 0, 
+                    tidak_sesuai_c: 0, tidak_sesuai_t: 0, tidak_sesuai_ina: 0,
                     rsLevel: rsLevelStr,
                     comps: { 
+                        BELUM_ADA_MAPPING: {count:0, tIna:0, tIdrg:0, icds: {}}, 
                         DASAR: {count:0, tIna:0, tIdrg:0, icds: {}}, 
                         MADYA: {count:0, tIna:0, tIdrg:0, icds: {}}, 
                         UTAMA: {count:0, tIna:0, tIdrg:0, icds: {}}, 
@@ -396,40 +482,90 @@ exports.analyzeTxt = async (req, res) => {
             
             if (isOutsideGroup) {
                 mdcMap[gName].tidak_sesuai_c++;
-                mdcMap[gName].tidak_sesuai_t += lossValueGroup;
+                mdcMap[gName].tidak_sesuai_t += tarifIdrgRaw;
+                mdcMap[gName].tidak_sesuai_ina += tarif;
+                
+                dpjpMap[dpjpRealName].tidak_sesuai_c++;
+                dpjpMap[dpjpRealName].tidak_sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpRealName].tidak_sesuai_ina += tarif;
             } else {
                 mdcMap[gName].sesuai_c++;
-                mdcMap[gName].sesuai_t += finalTarifIdrgGroup;
+                mdcMap[gName].sesuai_t += tarifIdrgRaw;
+                mdcMap[gName].sesuai_ina += tarif;
+                
+                dpjpMap[dpjpRealName].sesuai_c++;
+                dpjpMap[dpjpRealName].sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpRealName].sesuai_ina += tarif;
             }
             
-            const lvlUpper = reqLevelStr.toUpperCase();
+            if (!dpjpMap[dpjpRealName].comps[gName]) {
+                dpjpMap[dpjpRealName].comps[gName] = {
+                    name: gName, count: 0,
+                    sesuai_c: 0, sesuai_t: 0, sesuai_ina: 0,
+                    tidak_sesuai_c: 0, tidak_sesuai_t: 0, tidak_sesuai_ina: 0,
+                    levels: { 
+                        BELUM_ADA_MAPPING: {count:0, tIna:0, tIdrg:0, icds: {}}, 
+                        DASAR: {count:0, tIna:0, tIdrg:0, icds: {}}, 
+                        MADYA: {count:0, tIna:0, tIdrg:0, icds: {}}, 
+                        UTAMA: {count:0, tIna:0, tIdrg:0, icds: {}}, 
+                        PARIPURNA: {count:0, tIna:0, tIdrg:0, icds: {}} 
+                    }
+                };
+            }
+            dpjpMap[dpjpRealName].comps[gName].count++;
+            if (isOutsideGroup) {
+                dpjpMap[dpjpRealName].comps[gName].tidak_sesuai_c++;
+                dpjpMap[dpjpRealName].comps[gName].tidak_sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpRealName].comps[gName].tidak_sesuai_ina += tarif;
+            } else {
+                dpjpMap[dpjpRealName].comps[gName].sesuai_c++;
+                dpjpMap[dpjpRealName].comps[gName].sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpRealName].comps[gName].sesuai_ina += tarif;
+            }
+            
+            const lvlUpper = reqLevelStr.toUpperCase().replace(/ /g, '_');
             if (mdcMap[gName].comps[lvlUpper]) {
                 mdcMap[gName].comps[lvlUpper].count++;
                 mdcMap[gName].comps[lvlUpper].tIna += tarif;
                 mdcMap[gName].comps[lvlUpper].tIdrg += finalTarifIdrgGroup;
                 
                 const icdCode = (diaglist.length > 0 && diaglist[0].trim()) ? diaglist[0].trim() : 'Unknown';
-                const icdDesc = icdDescMap ? (icdDescMap.get(icdCode) || inacbgDesc) : inacbgDesc;
+                let icdDesc = (icdDescMap && icdDescMap.get(icdCode)) ? icdDescMap.get(icdCode) : fallbackDict[icdCode];
+                if (!icdDesc && icdCode.includes('.')) {
+                    icdDesc = fallbackDict[icdCode.split('.')[0]];
+                }
+                if (!icdDesc) icdDesc = '(Deskripsi tidak tersedia di Master Data)';
                 
                 if (!mdcMap[gName].comps[lvlUpper].icds[icdCode]) {
                     mdcMap[gName].comps[lvlUpper].icds[icdCode] = {
-                        code: icdCode,
-                        desc: icdDesc,
-                        count: 0,
-                        tIna: 0,
-                        tIdrg: 0,
-                        loss: 0,
-                        isOutsideGroup: isOutsideGroup
+                        code: icdCode, desc: icdDesc, count: 0, tIna: 0, tIdrg: 0, loss: 0, isOutsideGroup: isOutsideGroup
                     };
                 }
                 mdcMap[gName].comps[lvlUpper].icds[icdCode].count++;
                 mdcMap[gName].comps[lvlUpper].icds[icdCode].tIna += tarif;
                 mdcMap[gName].comps[lvlUpper].icds[icdCode].tIdrg += finalTarifIdrgGroup;
                 mdcMap[gName].comps[lvlUpper].icds[icdCode].loss += lossValueGroup;
+                
+                // For DPJP
+                if (dpjpMap[dpjpRealName].comps[gName].levels && dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper]) {
+                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].count++;
+                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].tIna += tarif;
+                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].tIdrg += finalTarifIdrgGroup;
+                    
+                    if (!dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode]) {
+                        dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode] = {
+                            code: icdCode, desc: icdDesc, count: 0, tIna: 0, tIdrg: 0, loss: 0, isOutsideGroup: isOutsideGroup
+                        };
+                    }
+                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].count++;
+                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].tIna += tarif;
+                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].tIdrg += finalTarifIdrgGroup;
+                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].loss += lossValueGroup;
+                }
             }
         }
         
-        let overallMaxLevelStr = "Dasar";
+        let overallMaxLevelStr = "Belum Ada Mapping";
         let overallMaxLevelInt = 0;
         let anyOutside = false;
         for (const reqComp of patientNeededCompetencies) {
@@ -443,7 +579,7 @@ exports.analyzeTxt = async (req, res) => {
                 anyOutside = true;
             }
         }
-        if (overallMaxLevelInt === 0) overallMaxLevelStr = "Dasar";
+        if (overallMaxLevelInt === 0) overallMaxLevelStr = "Belum Ada Mapping";
         
         if (!reports.inaCbg[monthKey]) reports.inaCbg[monthKey] = { monthKey, sl0_c:0, sl0_t:0, sl1_c:0, sl1_t:0, sl2_c:0, sl2_t:0, sl3_c:0, sl3_t:0, total_c:0, total_t:0 };
         if (!reports.idrg[monthKey]) reports.idrg[monthKey] = { monthKey, d_c:0, d_t:0, m_c:0, m_t:0, u_c:0, u_t:0, p_c:0, p_t:0, unmapped_c:0, unmapped_t:0, topup_c:0, topup_t:0, total_c:0 };
@@ -514,13 +650,32 @@ exports.analyzeTxt = async (req, res) => {
     fs.unlinkSync(filePath);
     
     for (const g of Object.values(mdcMap)) {
-        for (const lvl of ['DASAR', 'MADYA', 'UTAMA', 'PARIPURNA']) {
+        for (const lvl of ['BELUM_ADA_MAPPING', 'DASAR', 'MADYA', 'UTAMA', 'PARIPURNA']) {
             if (g.comps && g.comps[lvl] && g.comps[lvl].icds) {
                 g.comps[lvl].icds = Object.values(g.comps[lvl].icds).sort((a,b) => b.count - a.count);
             }
         }
     }
-    const kelompokLayananData = Object.values(mdcMap).sort((a, b) => b.count - a.count);
+    
+    for (const d of Object.values(dpjpMap)) {
+        if (d.comps) {
+            for (const c of Object.values(d.comps)) {
+                if (c.levels) {
+                    for (const lvl of ['BELUM_ADA_MAPPING', 'DASAR', 'MADYA', 'UTAMA', 'PARIPURNA']) {
+                        if (c.levels[lvl] && c.levels[lvl].icds) {
+                            c.levels[lvl].icds = Object.values(c.levels[lvl].icds).sort((a,b) => b.count - a.count);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    const kelompokLayananData = Object.values(mdcMap).sort((a, b) => {
+        if (a.name === "KASUS BELUM MAPPING") return 1;
+        if (b.name === "KASUS BELUM MAPPING") return -1;
+        return b.count - a.count;
+    });
     
     const gabSorted = Object.values(reports.gabungan).sort((a,b) => a.monthKey.localeCompare(b.monthKey));
     let monthlyArray = gabSorted.map(g => {
@@ -549,6 +704,8 @@ exports.analyzeTxt = async (req, res) => {
         .filter(e => e[1].count > 0 && e[1].selisihTotal > 0)
         .sort((a,b) => b[1].selisihTotal - a[1].selisihTotal)
         .slice(0, 10).map(e => ({ code: e[0], desc: e[1].desc, count: e[1].count, selisihVsRs: e[1].selisihTotal }));
+
+    const dpjpDataArray = Object.values(dpjpMap).sort((a, b) => b.count - a.count);
 
     const finalResponse = {
         summary: {
@@ -588,27 +745,39 @@ exports.analyzeTxt = async (req, res) => {
         },
         anomalies: gapAnomalies,
         reports: finalReports,
-        kelompokLayananData
+        kelompokLayananData,
+        dpjpData: dpjpDataArray
     };
 
     if (isAppend && lastAnalysisResult) {
-        const prev = lastAnalysisResult.kpiData;
-        const curr = finalResponse.kpiData;
+        const prev = lastAnalysisResult.dashboard || {};
+        const curr = finalResponse.dashboard;
+        const prevSum = lastAnalysisResult.summary || {};
+        const currSum = finalResponse.summary;
 
-        // Merge numeric KPIs
-        curr.totalPatients += prev.totalPatients || 0;
+        // Merge summary KPIs
+        currSum.totalPatients += prevSum.totalPatients || 0;
+        currSum.patientsWithinCompetency += prevSum.patientsWithinCompetency || 0;
+        currSum.patientsOutsideCompetency += prevSum.patientsOutsideCompetency || 0;
+        currSum.totalTarifInacbg += prevSum.totalTarifInacbg || 0;
+        currSum.tarifWithinCompetency += prevSum.tarifWithinCompetency || 0;
+        currSum.tarifOutsideCompetency += prevSum.tarifOutsideCompetency || 0;
+        
+        finalResponse.kpis.totalCases = currSum.totalPatients;
+        finalResponse.kpis.totalTarifInacbg = currSum.totalTarifInacbg;
+        
+        // Merge dashboard KPIs
+        curr.totalRows = currSum.totalPatients;
         curr.ranapCount += prev.ranapCount || 0;
         curr.tIna += prev.tIna || 0;
         curr.tIdrg += prev.tIdrg || 0;
         curr.tRs += prev.tRs || 0;
         curr.selisihTotal = curr.tIdrg - curr.tIna;
-        curr.rataIna = curr.totalPatients ? curr.tIna / curr.totalPatients : 0;
-        curr.rataIdrg = curr.totalPatients ? curr.tIdrg / curr.totalPatients : 0;
+        curr.rataIna = curr.totalRows ? curr.tIna / curr.totalRows : 0;
+        curr.rataIdrg = curr.totalRows ? curr.tIdrg / curr.totalRows : 0;
         curr.cInaHigh = (curr.cInaHigh || 0) + (prev.cInaHigh || 0);
         curr.cIdrgHigh = (curr.cIdrgHigh || 0) + (prev.cIdrgHigh || 0);
         curr.cEq = (curr.cEq || 0) + (prev.cEq || 0);
-        curr.patientsWithin += prev.patientsWithin || 0;
-        curr.patientsOutside += prev.patientsOutside || 0;
 
         // Merge severity & complexity
         Object.keys(prev.severityStats || {}).forEach(k => {
@@ -627,21 +796,169 @@ exports.analyzeTxt = async (req, res) => {
         const prevReports = lastAnalysisResult.reports || {};
         const currReports = finalResponse.reports || {};
         ['inaCbg', 'idrg', 'gabungan'].forEach(rType => {
-            if (prevReports[rType]) {
-                Object.keys(prevReports[rType]).forEach(mKey => {
-                    if (!currReports[rType]) currReports[rType] = {};
-                    if (!currReports[rType][mKey]) {
-                        currReports[rType][mKey] = prevReports[rType][mKey];
-                    } else {
-                        Object.keys(prevReports[rType][mKey]).forEach(f => {
-                            if (typeof prevReports[rType][mKey][f] === 'number') {
-                                currReports[rType][mKey][f] = (currReports[rType][mKey][f] || 0) + prevReports[rType][mKey][f];
+            if (prevReports[rType] && Array.isArray(prevReports[rType])) {
+                prevReports[rType].forEach(pItem => {
+                    const cItem = currReports[rType].find(c => c.monthKey === pItem.monthKey);
+                    if (cItem) {
+                        Object.keys(pItem).forEach(f => {
+                            if (typeof pItem[f] === 'number') {
+                                cItem[f] = (cItem[f] || 0) + pItem[f];
                             }
                         });
+                    } else {
+                        currReports[rType].push({ ...pItem });
                     }
                 });
+                currReports[rType].sort((a,b) => a.monthKey.localeCompare(b.monthKey));
             }
         });
+        
+        ['idrg_ri', 'idrg_rj'].forEach(rType => {
+            if (prevReports[rType] && Array.isArray(prevReports[rType])) {
+                prevReports[rType].forEach(pItem => {
+                    const cItem = currReports[rType].find(c => c.drgCode === pItem.drgCode);
+                    if (cItem) {
+                        cItem.cases = (cItem.cases || 0) + (pItem.cases || 0);
+                        cItem.tRs = (cItem.tRs || 0) + (pItem.tRs || 0);
+                        cItem.tIna = (cItem.tIna || 0) + (pItem.tIna || 0);
+                        cItem.tIdrg = (cItem.tIdrg || 0) + (pItem.tIdrg || 0);
+                    } else {
+                        currReports[rType].push({ ...pItem });
+                    }
+                });
+                currReports[rType].sort((a,b) => a.drgCode.localeCompare(b.drgCode));
+            }
+        });
+        
+        curr.monthlyArray = currReports.gabungan.map(g => ({
+            label: g.monthKey,
+            tarifRs: g.ri_tRs + g.rj_tRs,
+            inacbg: g.inacbg_ri_t + g.inacbg_rj_t,
+            idrg: g.idrg_ri_t + g.idrg_rj_t,
+            selisih: (g.idrg_ri_t + g.idrg_rj_t) - (g.inacbg_ri_t + g.inacbg_rj_t)
+        }));
+
+        // Merge kelompok layanan
+        const prevK = lastAnalysisResult.kelompokLayananData || [];
+        const currK = finalResponse.kelompokLayananData;
+        currK.forEach(cItem => {
+             const pItem = prevK.find(p => p.name === cItem.name);
+             if (pItem) {
+                 cItem.count += pItem.count || 0;
+                 cItem.tInacbg += pItem.tInacbg || 0;
+                 cItem.tIdrg += pItem.tIdrg || 0;
+                 cItem.sesuai_c += pItem.sesuai_c || 0;
+                 cItem.sesuai_t += pItem.sesuai_t || 0;
+                 cItem.sesuai_ina += pItem.sesuai_ina || 0;
+                 cItem.tidak_sesuai_c += pItem.tidak_sesuai_c || 0;
+                 cItem.tidak_sesuai_t += pItem.tidak_sesuai_t || 0;
+                 cItem.tidak_sesuai_ina += pItem.tidak_sesuai_ina || 0;
+                 
+                 ['BELUM_ADA_MAPPING', 'DASAR', 'MADYA', 'UTAMA', 'PARIPURNA'].forEach(lvl => {
+                     if (pItem.comps && pItem.comps[lvl]) {
+                         cItem.comps[lvl].count += pItem.comps[lvl].count || 0;
+                         cItem.comps[lvl].tIna += pItem.comps[lvl].tIna || 0;
+                         cItem.comps[lvl].tIdrg += pItem.comps[lvl].tIdrg || 0;
+                         
+                         const cIcds = cItem.comps[lvl].icds || [];
+                         const pIcds = pItem.comps[lvl].icds || [];
+                         
+                         pIcds.forEach(pIcd => {
+                             const existing = cIcds.find(c => c.code === pIcd.code);
+                             if (existing) {
+                                 existing.count += pIcd.count || 0;
+                                 existing.tIna += pIcd.tIna || 0;
+                                 existing.tIdrg += pIcd.tIdrg || 0;
+                                 existing.loss += pIcd.loss || 0;
+                             } else {
+                                 cIcds.push({ ...pIcd });
+                             }
+                         });
+                         cIcds.sort((a,b) => b.count - a.count);
+                         cItem.comps[lvl].icds = cIcds;
+                     }
+                 });
+             }
+        });
+        // Add any missing prev items into curr (both kelompokLayanan and DPJP)
+        prevK.forEach(pItem => {
+            if (!currK.find(c => c.name === pItem.name)) {
+                currK.push(JSON.parse(JSON.stringify(pItem)));
+            }
+        });
+        currK.sort((a,b) => {
+            if (a.name === "KASUS BELUM MAPPING") return 1;
+            if (b.name === "KASUS BELUM MAPPING") return -1;
+            return b.count - a.count;
+        });
+        
+        // Merge dpjp
+        const prevDpjp = lastAnalysisResult.dpjpData || [];
+        const currDpjp = finalResponse.dpjpData || [];
+        
+        prevDpjp.forEach(pItem => {
+            if (!currDpjp.find(c => c.name === pItem.name)) {
+                currDpjp.push(JSON.parse(JSON.stringify(pItem)));
+            }
+        });
+        
+        currDpjp.forEach(cItem => {
+            const pItem = prevDpjp.find(p => p.name === cItem.name);
+            if (pItem) {
+                cItem.count += pItem.count || 0;
+                cItem.sesuai_c += pItem.sesuai_c || 0;
+                cItem.sesuai_t += pItem.sesuai_t || 0;
+                cItem.sesuai_ina += pItem.sesuai_ina || 0;
+                cItem.tidak_sesuai_c += pItem.tidak_sesuai_c || 0;
+                cItem.tidak_sesuai_t += pItem.tidak_sesuai_t || 0;
+                cItem.tidak_sesuai_ina += pItem.tidak_sesuai_ina || 0;
+                
+                if (pItem.comps) {
+                    Object.keys(pItem.comps).forEach(gName => {
+                        if (!cItem.comps[gName]) {
+                            cItem.comps[gName] = JSON.parse(JSON.stringify(pItem.comps[gName]));
+                        } else {
+                            const cG = cItem.comps[gName];
+                            const pG = pItem.comps[gName];
+                            cG.count += pG.count || 0;
+                            cG.sesuai_c += pG.sesuai_c || 0;
+                            cG.sesuai_t += pG.sesuai_t || 0;
+                            cG.sesuai_ina += pG.sesuai_ina || 0;
+                            cG.tidak_sesuai_c += pG.tidak_sesuai_c || 0;
+                            cG.tidak_sesuai_t += pG.tidak_sesuai_t || 0;
+                            cG.tidak_sesuai_ina += pG.tidak_sesuai_ina || 0;
+                            
+                            ['BELUM_ADA_MAPPING', 'DASAR', 'MADYA', 'UTAMA', 'PARIPURNA'].forEach(lvl => {
+                                if (pG.levels && pG.levels[lvl] && cG.levels && cG.levels[lvl]) {
+                                    cG.levels[lvl].count += pG.levels[lvl].count || 0;
+                                    cG.levels[lvl].tIna += pG.levels[lvl].tIna || 0;
+                                    cG.levels[lvl].tIdrg += pG.levels[lvl].tIdrg || 0;
+                                    
+                                    const cIcds = cG.levels[lvl].icds || [];
+                                    const pIcds = pG.levels[lvl].icds || [];
+                                    
+                                    pIcds.forEach(pIcd => {
+                                        const cIcd = cIcds.find(x => x.code === pIcd.code);
+                                        if (cIcd) {
+                                            cIcd.count += pIcd.count || 0;
+                                            cIcd.tIna += pIcd.tIna || 0;
+                                            cIcd.tIdrg += pIcd.tIdrg || 0;
+                                            cIcd.loss += pIcd.loss || 0;
+                                        } else {
+                                            cIcds.push(JSON.parse(JSON.stringify(pIcd)));
+                                        }
+                                    });
+                                    cIcds.sort((a,b) => b.count - a.count);
+                                    cG.levels[lvl].icds = cIcds;
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        });
+        currDpjp.sort((a,b) => b.count - a.count);
+
         // Merge anomalies
         finalResponse.anomalies = [...(finalResponse.anomalies || []), ...(lastAnalysisResult.anomalies || [])];
     }
