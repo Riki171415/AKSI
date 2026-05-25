@@ -151,6 +151,23 @@ export default function Laporan() {
           ))}
           {r.inaCbg.length === 0 && <tr><td colSpan="12" className="text-center text-muted">Tidak ada data</td></tr>}
         </tbody>
+        {r.inaCbg.length > 0 && (
+          <tfoot>
+            <tr style={{ backgroundColor: 'var(--surface-alt)' }}>
+              <td colSpan="2" className="text-center font-black" style={{ padding: '1rem' }}>TOTAL</td>
+              <td className="text-center font-black">{formatNumber(r.inaCbg.reduce((s, d) => s + d.sl0_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.inaCbg.reduce((s, d) => s + d.sl1_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.inaCbg.reduce((s, d) => s + d.sl2_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.inaCbg.reduce((s, d) => s + d.sl3_c, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.inaCbg.reduce((s, d) => s + d.sl0_t, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.inaCbg.reduce((s, d) => s + d.sl1_t, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.inaCbg.reduce((s, d) => s + d.sl2_t, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.inaCbg.reduce((s, d) => s + d.sl3_t, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.inaCbg.reduce((s, d) => s + d.total_c, 0))}</td>
+              <td className="text-right font-black" style={{ color: 'var(--primary)' }}>{formatRupiah(r.inaCbg.reduce((s, d) => s + d.total_t, 0))}</td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
@@ -197,6 +214,26 @@ export default function Laporan() {
           ))}
           {r.idrg.length === 0 && <tr><td colSpan="15" className="text-center text-muted">Tidak ada data</td></tr>}
         </tbody>
+        {r.idrg.length > 0 && (
+          <tfoot>
+            <tr style={{ backgroundColor: 'var(--surface-alt)' }}>
+              <td colSpan="2" className="text-center font-black" style={{ padding: '1rem' }}>TOTAL</td>
+              <td className="text-center font-black">{formatNumber(r.idrg.reduce((s, d) => s + d.d_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.idrg.reduce((s, d) => s + d.m_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.idrg.reduce((s, d) => s + d.u_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.idrg.reduce((s, d) => s + d.p_c, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.idrg.reduce((s, d) => s + d.d_t, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.idrg.reduce((s, d) => s + d.m_t, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.idrg.reduce((s, d) => s + d.u_t, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.idrg.reduce((s, d) => s + d.p_t, 0))}</td>
+              <td className="text-center font-black" style={{ color: 'var(--danger)' }}>{formatNumber(r.idrg.reduce((s, d) => s + d.unmapped_c, 0))}</td>
+              <td className="text-right font-black" style={{ color: 'var(--danger)' }}>{formatRupiah(r.idrg.reduce((s, d) => s + d.unmapped_t, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.idrg.reduce((s, d) => s + d.topup_c, 0))}</td>
+              <td className="text-right font-black text-success">{formatRupiah(r.idrg.reduce((s, d) => s + d.topup_t, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.idrg.reduce((s, d) => s + d.total_c, 0))}</td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
@@ -311,6 +348,27 @@ export default function Laporan() {
           ))}
           {r.gabungan.length === 0 && <tr><td colSpan="13" className="text-center text-muted">Tidak ada data</td></tr>}
         </tbody>
+        {r.gabungan.length > 0 && (
+          <tfoot>
+            <tr style={{ backgroundColor: 'var(--surface-alt)' }}>
+              <td colSpan="2" className="text-center font-black" style={{ padding: '1rem' }}>TOTAL</td>
+              <td className="text-right font-black">{formatRupiah(r.gabungan.reduce((s, d) => s + d.rj_tRs, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.gabungan.reduce((s, d) => s + d.ri_tRs, 0))}</td>
+              
+              <td className="text-center font-black">{formatNumber(r.gabungan.reduce((s, d) => s + d.inacbg_rj_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.gabungan.reduce((s, d) => s + d.inacbg_ri_c, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.gabungan.reduce((s, d) => s + d.inacbg_rj_t, 0))}</td>
+              <td className="text-right font-black">{formatRupiah(r.gabungan.reduce((s, d) => s + d.inacbg_ri_t, 0))}</td>
+              
+              <td className="text-center font-black">{formatNumber(r.gabungan.reduce((s, d) => s + d.idrg_rj_c, 0))}</td>
+              <td className="text-center font-black">{formatNumber(r.gabungan.reduce((s, d) => s + d.idrg_ri_c, 0))}</td>
+              <td className="text-right font-black" style={{ color: 'var(--primary)' }}>{formatRupiah(r.gabungan.reduce((s, d) => s + d.idrg_rj_t, 0))}</td>
+              <td className="text-right font-black" style={{ color: 'var(--primary)' }}>{formatRupiah(r.gabungan.reduce((s, d) => s + d.idrg_ri_t, 0))}</td>
+              
+              <td className="text-center font-black text-danger">{formatNumber(r.gabungan.reduce((s, d) => s + d.ungroup_c, 0))}</td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
