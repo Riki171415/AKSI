@@ -146,6 +146,17 @@ exports.analyzeTxt = async (req, res) => {
             return word[0] + '*'.repeat(word.length - 2) + word[word.length - 1];
         }).join(' ');
     };
+
+    const normalizeDpjpName = (name) => {
+        if (!name) return '';
+        let n = name.toUpperCase();
+        n = n.replace(/^(DR\.|DRG\.|DR|DRG|PROF\.|PROF)\s+/g, '');
+        n = n.split(',')[0];
+        n = n.replace(/\s+(SP\..*|M\.KES.*|MARS.*|M\.SC.*)$/g, '');
+        n = n.replace(/\s+(DR|DRG)$/g, '');
+        n = n.replace(/[\.\,\-\']/g, ' ');
+        return n.trim().replace(/\s+/g, ' ');
+    };
     
     for await (const line of rl) {
         if (!line.trim()) continue;
@@ -292,10 +303,11 @@ exports.analyzeTxt = async (req, res) => {
         let dpjpRealName = dpjpNameRaw ? dpjpNameRaw.trim() : 'Tidak Diketahui';
         if (dpjpRealName === '-' || dpjpRealName === '' || dpjpRealName === '*') dpjpRealName = 'Tidak Diketahui';
         
-        let dpjpName = dpjpRealName !== 'Tidak Diketahui' ? maskName(dpjpRealName) : 'Tidak Diketahui';
+        let dpjpKey = dpjpRealName !== 'Tidak Diketahui' ? normalizeDpjpName(dpjpRealName) : 'Tidak Diketahui';
         
-        if (!dpjpMap[dpjpRealName]) {
-            dpjpMap[dpjpRealName] = {
+        if (!dpjpMap[dpjpKey]) {
+            let dpjpName = dpjpRealName !== 'Tidak Diketahui' ? maskName(dpjpRealName) : 'Tidak Diketahui';
+            dpjpMap[dpjpKey] = {
                 name: dpjpName,
                 realName: dpjpRealName,
                 count: 0,
@@ -304,7 +316,7 @@ exports.analyzeTxt = async (req, res) => {
                 comps: {}
             };
         }
-        dpjpMap[dpjpRealName].count++;
+        dpjpMap[dpjpKey].count++;
         
         if (isRI) ranapCount++;
         totalTarifRs += tarifRs;
@@ -485,21 +497,21 @@ exports.analyzeTxt = async (req, res) => {
                 mdcMap[gName].tidak_sesuai_t += tarifIdrgRaw;
                 mdcMap[gName].tidak_sesuai_ina += tarif;
                 
-                dpjpMap[dpjpRealName].tidak_sesuai_c++;
-                dpjpMap[dpjpRealName].tidak_sesuai_t += tarifIdrgRaw;
-                dpjpMap[dpjpRealName].tidak_sesuai_ina += tarif;
+                dpjpMap[dpjpKey].tidak_sesuai_c++;
+                dpjpMap[dpjpKey].tidak_sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpKey].tidak_sesuai_ina += tarif;
             } else {
                 mdcMap[gName].sesuai_c++;
                 mdcMap[gName].sesuai_t += tarifIdrgRaw;
                 mdcMap[gName].sesuai_ina += tarif;
                 
-                dpjpMap[dpjpRealName].sesuai_c++;
-                dpjpMap[dpjpRealName].sesuai_t += tarifIdrgRaw;
-                dpjpMap[dpjpRealName].sesuai_ina += tarif;
+                dpjpMap[dpjpKey].sesuai_c++;
+                dpjpMap[dpjpKey].sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpKey].sesuai_ina += tarif;
             }
             
-            if (!dpjpMap[dpjpRealName].comps[gName]) {
-                dpjpMap[dpjpRealName].comps[gName] = {
+            if (!dpjpMap[dpjpKey].comps[gName]) {
+                dpjpMap[dpjpKey].comps[gName] = {
                     name: gName, count: 0,
                     sesuai_c: 0, sesuai_t: 0, sesuai_ina: 0,
                     tidak_sesuai_c: 0, tidak_sesuai_t: 0, tidak_sesuai_ina: 0,
@@ -512,15 +524,15 @@ exports.analyzeTxt = async (req, res) => {
                     }
                 };
             }
-            dpjpMap[dpjpRealName].comps[gName].count++;
+            dpjpMap[dpjpKey].comps[gName].count++;
             if (isOutsideGroup) {
-                dpjpMap[dpjpRealName].comps[gName].tidak_sesuai_c++;
-                dpjpMap[dpjpRealName].comps[gName].tidak_sesuai_t += tarifIdrgRaw;
-                dpjpMap[dpjpRealName].comps[gName].tidak_sesuai_ina += tarif;
+                dpjpMap[dpjpKey].comps[gName].tidak_sesuai_c++;
+                dpjpMap[dpjpKey].comps[gName].tidak_sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpKey].comps[gName].tidak_sesuai_ina += tarif;
             } else {
-                dpjpMap[dpjpRealName].comps[gName].sesuai_c++;
-                dpjpMap[dpjpRealName].comps[gName].sesuai_t += tarifIdrgRaw;
-                dpjpMap[dpjpRealName].comps[gName].sesuai_ina += tarif;
+                dpjpMap[dpjpKey].comps[gName].sesuai_c++;
+                dpjpMap[dpjpKey].comps[gName].sesuai_t += tarifIdrgRaw;
+                dpjpMap[dpjpKey].comps[gName].sesuai_ina += tarif;
             }
             
             const lvlUpper = reqLevelStr.toUpperCase().replace(/ /g, '_');
@@ -547,20 +559,20 @@ exports.analyzeTxt = async (req, res) => {
                 mdcMap[gName].comps[lvlUpper].icds[icdCode].loss += lossValueGroup;
                 
                 // For DPJP
-                if (dpjpMap[dpjpRealName].comps[gName].levels && dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper]) {
-                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].count++;
-                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].tIna += tarif;
-                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].tIdrg += finalTarifIdrgGroup;
+                if (dpjpMap[dpjpKey].comps[gName].levels && dpjpMap[dpjpKey].comps[gName].levels[lvlUpper]) {
+                    dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].count++;
+                    dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].tIna += tarif;
+                    dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].tIdrg += finalTarifIdrgGroup;
                     
-                    if (!dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode]) {
-                        dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode] = {
+                    if (!dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].icds[icdCode]) {
+                        dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].icds[icdCode] = {
                             code: icdCode, desc: icdDesc, count: 0, tIna: 0, tIdrg: 0, loss: 0, isOutsideGroup: isOutsideGroup
                         };
                     }
-                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].count++;
-                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].tIna += tarif;
-                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].tIdrg += finalTarifIdrgGroup;
-                    dpjpMap[dpjpRealName].comps[gName].levels[lvlUpper].icds[icdCode].loss += lossValueGroup;
+                    dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].icds[icdCode].count++;
+                    dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].icds[icdCode].tIna += tarif;
+                    dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].icds[icdCode].tIdrg += finalTarifIdrgGroup;
+                    dpjpMap[dpjpKey].comps[gName].levels[lvlUpper].icds[icdCode].loss += lossValueGroup;
                 }
             }
         }
