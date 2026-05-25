@@ -12,7 +12,7 @@ exports.login = (req, res) => {
     }
     
     if (!hospitalSettings.has(kodeRs)) {
-        hospitalSettings.set(kodeRs, { competencies: [] });
+        hospitalSettings.set(kodeRs, { competencies: {} });
     }
     
     const token = jwt.sign({ kodeRs }, SECRET_KEY, { expiresIn: '24h' });
@@ -26,7 +26,7 @@ exports.login = (req, res) => {
 
 exports.getSettings = (req, res) => {
     const kodeRs = req.user.kodeRs;
-    const settings = hospitalSettings.get(kodeRs) || { competencies: [] };
+    const settings = hospitalSettings.get(kodeRs) || { competencies: {} };
     
     res.json({
         myCompetencies: settings.competencies,
@@ -38,7 +38,7 @@ exports.saveSettings = (req, res) => {
     const kodeRs = req.user.kodeRs;
     const { competencies: selectedCompetencies } = req.body;
     
-    hospitalSettings.set(kodeRs, { competencies: selectedCompetencies || [] });
+    hospitalSettings.set(kodeRs, { competencies: selectedCompetencies || {} });
     
     res.json({ message: 'Pengaturan berhasil disimpan' });
 };

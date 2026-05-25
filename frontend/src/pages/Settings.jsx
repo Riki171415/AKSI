@@ -3,10 +3,12 @@ import axios from 'axios';
 
 export default function Settings() {
   const [allCompetencies, setAllCompetencies] = useState([]);
-  const [myCompetencies, setMyCompetencies] = useState(new Set());
+  const [myCompetencies, setMyCompetencies] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+
+  const levels = ["Dasar", "Madya", "Utama", "Paripurna"];
 
   useEffect(() => {
     fetchSettings();
@@ -19,7 +21,7 @@ export default function Settings() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAllCompetencies(res.data.allCompetencies);
-      setMyCompetencies(new Set(res.data.myCompetencies));
+      setMyCompetencies(res.data.myCompetencies || {});
     } catch (err) {
       console.error(err);
       setMessage('Gagal mengambil data pengaturan.');
@@ -28,14 +30,16 @@ export default function Settings() {
     }
   };
 
-  const handleToggle = (comp) => {
-    const newSet = new Set(myCompetencies);
-    if (newSet.has(comp)) {
-      newSet.delete(comp);
-    } else {
-      newSet.add(comp);
-    }
-    setMyCompetencies(newSet);
+  const handleChange = (comp, level) => {
+    setMyCompetencies(prev => {
+      const newSettings = { ...prev };
+      if (!level) {
+        delete newSettings[comp];
+      } else {
+        newSettings[comp] = level;
+      }
+      return newSettings;
+    });
   };
 
   const handleSave = async () => {
@@ -44,7 +48,7 @@ export default function Settings() {
     try {
       const token = localStorage.getItem('token');
       await axios.post('http://localhost:5000/api/settings', 
-        { competencies: Array.from(myCompetencies) },
+        { competencies: myCompetencies },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage('Pengaturan berhasil disimpan!');
@@ -62,8 +66,8 @@ export default function Settings() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <h1 className="page-title">Pengaturan Kompetensi RS</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Centang layanan yang tersedia di Rumah Sakit Anda. Ini akan digunakan sebagai dasar analisis klaim.</p>
+          <h1 className="page-title">Pengaturan Tingkat Kompetensi RS</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Pilih tingkat kemampuan layanan yang tersedia di Rumah Sakit Anda (Dasar, Madya, Utama, Paripurna).</p>
         </div>
         <button className="btn-primary" onClick={handleSave} disabled={saving}>
           {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
@@ -79,14 +83,19 @@ export default function Settings() {
       <div className="card">
         <div className="competency-list">
           {allCompetencies.map(comp => (
-            <label key={comp} className="competency-item">
-              <input 
-                type="checkbox" 
-                checked={myCompetencies.has(comp)}
-                onChange={() => handleToggle(comp)}
-              />
-              <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>{comp}</span>
-            </label>
+            <div key={comp} className="competency-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem' }}>{comp}</span>
+              <select 
+                value={myCompetencies[comp] || ""}
+                onChange={(e) => handleChange(comp, e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)', outline: 'none' }}
+              >
+                <option value="">-- Tidak Tersedia --</option>
+                {levels.map(lvl => (
+                  <option key={lvl} value={lvl}>{lvl}</option>
+                ))}
+              </select>
+            </div>
           ))}
         </div>
       </div>
