@@ -31,6 +31,7 @@ exports.analyzeTxt = async (req, res) => {
     let patientsOutsideCompetency = 0;
     let requiredCompetenciesCount = {};
     let gapAnomalies = [];
+    let reportMap = {};
     
     const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({
@@ -56,6 +57,9 @@ exports.analyzeTxt = async (req, res) => {
         const nameIdx = headers.indexOf('NAMA_PASIEN');
         const mrnIdx = headers.indexOf('MRN');
         const sepIdx = headers.indexOf('SEP');
+        const dateIdx = headers.indexOf('DISCHARGE_DATE');
+        const tarifIdx = headers.indexOf('TOTAL_TARIF');
+        const tarifRsIdx = headers.indexOf('TARIF_RS');
         
         if (diagIdx === -1) continue;
         
@@ -64,6 +68,19 @@ exports.analyzeTxt = async (req, res) => {
         const patientName = nameIdx !== -1 ? columns[nameIdx] : 'Unknown';
         const mrn = mrnIdx !== -1 ? columns[mrnIdx] : 'Unknown';
         const sep = sepIdx !== -1 ? columns[sepIdx] : 'Unknown';
+        
+        const dateStr = dateIdx !== -1 ? columns[dateIdx] : '';
+        let monthKey = "Unknown";
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length >= 3) monthKey = parts[2] + '-' + parts[1]; // DD/MM/YYYY -> YYYY-MM
+        } else if (dateStr.includes('-')) {
+            const parts = dateStr.split('-');
+            if (parts.length >= 3) monthKey = parts[0] + '-' + parts[1]; // YYYY-MM-DD -> YYYY-MM
+        }
+        
+        const tarifValStr = (tarifIdx !== -1 && columns[tarifIdx]) ? columns[tarifIdx] : ((tarifRsIdx !== -1 && columns[tarifRsIdx]) ? columns[tarifRsIdx] : "0");
+        const tarif = parseFloat(tarifValStr) || 0;
         
         const allIcds = [...diaglist, ...proclist].filter(c => c.trim());
         
@@ -85,10 +102,18 @@ exports.analyzeTxt = async (req, res) => {
         let missingCompetencies = [];
         let missingSet = new Set();
         
+        let maxLevelInt = 1; // Default to Dasar
+        let maxLevelStr = "Dasar";
+        
         for (const reqComp of patientNeededCompetencies) {
             const groupName = reqComp.group;
             const reqLevel = reqComp.level;
             const reqLevelInt = reqComp.levelInt;
+            
+            if (reqLevelInt > maxLevelInt) {
+                maxLevelInt = reqLevelInt;
+                maxLevelStr = reqLevel;
+            }
             
             requiredCompetenciesCount[groupName] = (requiredCompetenciesCount[groupName] || 0) + 1;
             
@@ -103,6 +128,26 @@ exports.analyzeTxt = async (req, res) => {
                     missingCompetencies.push(msg);
                 }
             }
+        }
+        
+        // Reporting aggregation
+        if (!reportMap[monthKey]) {
+            reportMap[monthKey] = {
+                _id: monthKey,
+                idrg_dasar_c: 0, idrg_dasar_t: 0,
+                idrg_madya_c: 0, idrg_madya_t: 0,
+                idrg_utama_c: 0, idrg_utama_t: 0,
+                idrg_pari_c: 0, idrg_pari_t: 0,
+                idrg_topup_c: 0, idrg_topup_t: 0
+            };
+        }
+        
+        let mappedLevel = maxLevelStr.toLowerCase();
+        if (mappedLevel === 'paripurna') mappedLevel = 'pari';
+        
+        if (reportMap[monthKey][`idrg_${mappedLevel}_c`] !== undefined) {
+            reportMap[monthKey][`idrg_${mappedLevel}_c`]++;
+            reportMap[monthKey][`idrg_${mappedLevel}_t`] += tarif;
         }
         
         if (isOutside) {
@@ -123,6 +168,8 @@ exports.analyzeTxt = async (req, res) => {
     
     fs.unlinkSync(filePath);
     
+    const reportsArray = Object.values(reportMap).sort((a, b) => a._id.localeCompare(b._id));
+    
     res.json({
         summary: {
             totalPatients,
@@ -130,6 +177,7 @@ exports.analyzeTxt = async (req, res) => {
             patientsOutsideCompetency
         },
         competencyStats: requiredCompetenciesCount,
-        anomalies: gapAnomalies
+        anomalies: gapAnomalies,
+        reports: reportsArray
     });
 };

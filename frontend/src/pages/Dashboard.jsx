@@ -1,7 +1,85 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { UploadCloud, Users, CheckCircle, AlertTriangle } from 'lucide-react';
+import { UploadCloud, Users, CheckCircle, AlertTriangle, FileText, Download, Printer } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+
+// --- Helper Functions ---
+const formatRupiah = (angka) => {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+};
+
+const formatNumber = (angka) => {
+  return new Intl.NumberFormat('id-ID').format(angka);
+};
+
+const formatPeriode = (p) => {
+  if (!p || !p.includes('-')) return p;
+  const [y, m] = p.split('-');
+  if (y === "Unknown") return "Tidak Diketahui";
+  const bulan = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const monthIndex = parseInt(m);
+  return `${bulan[monthIndex] || m} - ${y}`;
+};
+
+const IdrgTable = ({ data }) => (
+  <div className="elite-card overflow-x-auto shadow-xl mt-8">
+    <div className="flex justify-between items-center p-4 bg-[var(--surface)] border-b border-[var(--border)]">
+      <div className="flex items-center gap-3">
+        <FileText className="text-[var(--primary)]" />
+        <h2 className="text-lg font-bold m-0 text-[var(--primary)]">LAPORAN KLAIM BERDASARKAN KOMPETENSI</h2>
+      </div>
+      <div className="flex gap-2">
+        <button className="btn-outline flex items-center gap-2 text-xs" onClick={() => window.print()}>
+          <Printer size={14} /> Cetak
+        </button>
+      </div>
+    </div>
+    <table className="w-full text-xs text-left border-collapse">
+      <thead className="bg-[#f8fafc] text-[var(--text-muted)]">
+        <tr>
+          <th rowSpan={2} className="p-3 border border-[var(--border)] text-center">NO</th>
+          <th rowSpan={2} className="p-3 border border-[var(--border)] text-center min-w-[120px]">BULAN LAYANAN</th>
+          <th colSpan={4} className="p-2 border border-[var(--border)] text-center bg-indigo-50 text-indigo-700">JUMLAH KASUS</th>
+          <th colSpan={4} className="p-2 border border-[var(--border)] text-center bg-teal-50 text-teal-700">JUMLAH KLAIM (Rp)</th>
+          <th rowSpan={2} className="p-3 border border-[var(--border)] text-center bg-slate-100 font-bold">TOTAL KASUS</th>
+          <th rowSpan={2} className="p-3 border border-[var(--border)] text-right bg-slate-100 font-bold min-w-[130px]">TOTAL KLAIM (Rp)</th>
+        </tr>
+        <tr className="text-[10px] font-bold uppercase text-slate-500">
+          <th className="p-2 border border-[var(--border)] text-center bg-indigo-50/50">DASAR</th>
+          <th className="p-2 border border-[var(--border)] text-center bg-indigo-50/50">MADYA</th>
+          <th className="p-2 border border-[var(--border)] text-center bg-indigo-50/50">UTAMA</th>
+          <th className="p-2 border border-[var(--border)] text-center bg-indigo-50/50">PARIPURNA</th>
+          <th className="p-2 border border-[var(--border)] text-right bg-teal-50/50">DASAR</th>
+          <th className="p-2 border border-[var(--border)] text-right bg-teal-50/50">MADYA</th>
+          <th className="p-2 border border-[var(--border)] text-right bg-teal-50/50">UTAMA</th>
+          <th className="p-2 border border-[var(--border)] text-right bg-teal-50/50">PARIPURNA</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-[var(--border)]">
+        {data.map((r, i) => (
+          <tr key={i} className="hover:bg-slate-50 transition-colors">
+            <td className="p-2 border border-[var(--border)] text-center font-bold text-[var(--text-muted)]">{i+1}</td>
+            <td className="p-2 border border-[var(--border)] font-bold uppercase text-[var(--primary)]">{formatPeriode(r._id)}</td>
+            <td className="p-2 border border-[var(--border)] text-center">{formatNumber(r.idrg_dasar_c)}</td>
+            <td className="p-2 border border-[var(--border)] text-center">{formatNumber(r.idrg_madya_c)}</td>
+            <td className="p-2 border border-[var(--border)] text-center">{formatNumber(r.idrg_utama_c)}</td>
+            <td className="p-2 border border-[var(--border)] text-center">{formatNumber(r.idrg_pari_c)}</td>
+            <td className="p-2 border border-[var(--border)] text-right">{formatRupiah(r.idrg_dasar_t)}</td>
+            <td className="p-2 border border-[var(--border)] text-right">{formatRupiah(r.idrg_madya_t)}</td>
+            <td className="p-2 border border-[var(--border)] text-right">{formatRupiah(r.idrg_utama_t)}</td>
+            <td className="p-2 border border-[var(--border)] text-right">{formatRupiah(r.idrg_pari_t)}</td>
+            <td className="p-2 border border-[var(--border)] text-center bg-slate-50 font-bold">
+              {formatNumber(r.idrg_dasar_c + r.idrg_madya_c + r.idrg_utama_c + r.idrg_pari_c)}
+            </td>
+            <td className="p-2 border border-[var(--border)] text-right bg-slate-50 font-bold text-[var(--primary)]">
+              {formatRupiah(r.idrg_dasar_t + r.idrg_madya_t + r.idrg_utama_t + r.idrg_pari_t)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
 export default function Dashboard() {
   const [file, setFile] = useState(null);
@@ -57,15 +135,15 @@ export default function Dashboard() {
       name: key.length > 20 ? key.substring(0, 20) + '...' : key,
       fullName: key,
       Jumlah: stats[key]
-    })).sort((a, b) => b.Jumlah - a.Jumlah).slice(0, 10); // Top 10
+    })).sort((a, b) => b.Jumlah - a.Jumlah).slice(0, 10);
   };
 
   return (
     <div>
-      <h1 className="page-title">Dashboard Analisis Klaim</h1>
+      <h1 className="page-title no-print">Dashboard Analisis Klaim</h1>
       
       {!results && (
-        <div className="card">
+        <div className="card no-print">
           <div className="card-header">
             <h2 className="card-title">Unggah Data TXT INACBG</h2>
           </div>
@@ -97,14 +175,14 @@ export default function Dashboard() {
 
       {results && (
         <div className="results-container fade-in">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div className="flex justify-between items-center mb-6 no-print">
             <h2 style={{ margin: 0 }}>Ringkasan Hasil Analisis</h2>
             <button className="btn-outline" onClick={() => { setResults(null); setFile(null); }}>
               Analisis Ulang File Baru
             </button>
           </div>
 
-          <div className="grid-3">
+          <div className="grid-3 no-print">
             <div className="card stat-card">
               <div className="stat-icon"><Users /></div>
               <div className="stat-info">
@@ -128,7 +206,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid-3" style={{ gridTemplateColumns: '1fr 2fr' }}>
+          <div className="grid-3 no-print" style={{ gridTemplateColumns: '1fr 2fr' }}>
             <div className="card">
               <div className="card-header"><h2 className="card-title">Proporsi Kompetensi</h2></div>
               <div style={{ height: '300px' }}>
@@ -151,14 +229,6 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: COLORS[0] }}></div> Sesuai
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: COLORS[1] }}></div> Di Luar Kompetensi
-                </div>
-              </div>
             </div>
 
             <div className="card">
@@ -177,8 +247,15 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* New Reporting Table Component */}
+          {results.reports && results.reports.length > 0 && (
+            <div className="print-only-table">
+               <IdrgTable data={results.reports} />
+            </div>
+          )}
+
           {results.anomalies.length > 0 && (
-            <div className="card">
+            <div className="card mt-8 no-print">
               <div className="card-header">
                 <h2 className="card-title">Sample Kasus Di Luar Kompetensi (Anomali)</h2>
                 <span className="badge badge-danger">Menampilkan maks 100 data</span>
