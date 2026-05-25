@@ -29,6 +29,9 @@ exports.analyzeTxt = async (req, res) => {
     let totalPatients = 0;
     let patientsWithinCompetency = 0;
     let patientsOutsideCompetency = 0;
+    let totalTarifInacbg = 0;
+    let tarifWithinCompetency = 0;
+    let tarifOutsideCompetency = 0;
     let requiredCompetenciesCount = {};
     let gapAnomalies = [];
     let reportMap = {};
@@ -97,6 +100,7 @@ exports.analyzeTxt = async (req, res) => {
         }
         
         totalPatients++;
+        totalTarifInacbg += tarif;
         
         let isOutside = false;
         let missingCompetencies = [];
@@ -152,6 +156,7 @@ exports.analyzeTxt = async (req, res) => {
         
         if (isOutside) {
             patientsOutsideCompetency++;
+            tarifOutsideCompetency += tarif;
             if (gapAnomalies.length < 100) {
                 gapAnomalies.push({
                     mrn,
@@ -163,6 +168,7 @@ exports.analyzeTxt = async (req, res) => {
             }
         } else {
             patientsWithinCompetency++;
+            tarifWithinCompetency += tarif;
         }
     }
     
@@ -174,7 +180,10 @@ exports.analyzeTxt = async (req, res) => {
         summary: {
             totalPatients,
             patientsWithinCompetency,
-            patientsOutsideCompetency
+            patientsOutsideCompetency,
+            totalTarifInacbg,
+            tarifWithinCompetency,
+            tarifOutsideCompetency
         },
         competencyStats: requiredCompetenciesCount,
         anomalies: gapAnomalies,

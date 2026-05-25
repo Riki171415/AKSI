@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1",
+    "username": "admin",
+    "password": "adminpassword",
+    "role": "admin",
+    "kodeRs": "ALL",
+    "nama": "Administrator"
+  },
+  {
+    "id": "2",
+    "username": "rs_sample",
+    "password": "password123",
+    "role": "user",
+    "kodeRs": "3273015",
+    "nama": "RS Sample"
+  }
+]

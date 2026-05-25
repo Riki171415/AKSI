@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 import Layout from './components/Layout';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="users" element={<UserManagement />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/login" replace />} />

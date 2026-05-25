@@ -3,7 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
-  const [kodeRs, setKodeRs] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [captchaAnswer, setCaptchaAnswer] = useState('');
@@ -23,8 +24,8 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!kodeRs) {
-      setError('Kode RS tidak boleh kosong');
+    if (!username || !password) {
+      setError('Username dan Password tidak boleh kosong');
       return;
     }
     
@@ -37,12 +38,14 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.post('http://localhost:5000/api/login', { kodeRs });
+      const res = await axios.post('http://localhost:5000/api/login', { username, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('kodeRs', res.data.kodeRs);
+      localStorage.setItem('role', res.data.role);
+      localStorage.setItem('nama', res.data.nama || username);
       navigate('/dashboard');
     } catch (err) {
-      setError('Gagal login. Periksa koneksi ke server.');
+      setError(err.response?.data?.message || 'Gagal login. Periksa koneksi ke server.');
       generateCaptcha();
     } finally {
       setLoading(false);
@@ -51,28 +54,38 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <div className="login-box">
+      <div className="login-box" style={{ maxWidth: '400px' }}>
         <div className="logo-container" style={{ justifyContent: 'center', marginBottom: '2rem' }}>
           <img src="/logo_apci.png" alt="APCI Logo" style={{ height: '80px' }} />
         </div>
-        <h2 style={{ marginBottom: '0.5rem' }}>Selamat Datang</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+        <h2 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Selamat Datang</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', textAlign: 'center' }}>
           Analisis Klaim & Kompetensi Rumah Sakit
         </p>
 
-        {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(229, 62, 62, 0.1)', borderRadius: '8px' }}>{error}</div>}
+        {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(229, 62, 62, 0.1)', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>{error}</div>}
 
         <form onSubmit={handleLogin}>
           <div className="input-group">
-            <label>Kode Rumah Sakit</label>
+            <label>Username</label>
             <input 
               type="text" 
-              placeholder="Masukkan Kode RS (contoh: 3273015)" 
-              value={kodeRs}
-              onChange={(e) => setKodeRs(e.target.value)}
+              placeholder="Masukkan username" 
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
             />
           </div>
           
+          <div className="input-group">
+            <label>Password</label>
+            <input 
+              type="password" 
+              placeholder="Masukkan password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
           <div className="input-group">
             <label>Verifikasi Keamanan (Berapa {captchaMath.num1} + {captchaMath.num2}?)</label>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

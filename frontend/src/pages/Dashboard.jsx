@@ -182,26 +182,45 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="grid-3 no-print">
-            <div className="card stat-card">
-              <div className="stat-icon"><Users /></div>
-              <div className="stat-info">
-                <h3>Total Pasien</h3>
-                <p>{results.summary.totalPatients.toLocaleString()}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 no-print">
+            <div className="card stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="stat-icon" style={{ backgroundColor: '#f1f5f9', color: '#64748b', padding: '0.75rem', borderRadius: '0.75rem' }}><FileText /></div>
+                <div>
+                  <h3 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Total Klaim INA-CBG</h3>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>{results.summary.totalPatients.toLocaleString()} Pasien</p>
+                </div>
+              </div>
+              <div style={{ paddingTop: '1rem', borderTop: '1px dashed #cbd5e1' }}>
+                <p style={{ fontSize: '1.25rem', fontWeight: 900, color: '#334155', margin: 0 }}>{formatRupiah(results.summary.totalTarifInacbg)}</p>
               </div>
             </div>
-            <div className="card stat-card">
-              <div className="stat-icon" style={{ color: 'var(--success)', background: 'rgba(56, 161, 105, 0.1)' }}><CheckCircle /></div>
-              <div className="stat-info">
-                <h3>Sesuai Kompetensi</h3>
-                <p>{results.summary.patientsWithinCompetency.toLocaleString()}</p>
+
+            <div className="card stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="stat-icon" style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '0.75rem', borderRadius: '0.75rem' }}><CheckCircle /></div>
+                <div>
+                  <h3 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Sesuai Kompetensi</h3>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>{results.summary.patientsWithinCompetency.toLocaleString()} Pasien</p>
+                </div>
+              </div>
+              <div style={{ paddingTop: '1rem', borderTop: '1px dashed #cbd5e1' }}>
+                <p style={{ fontSize: '1.25rem', fontWeight: 900, color: '#15803d', margin: 0 }}>{formatRupiah(results.summary.tarifWithinCompetency)}</p>
               </div>
             </div>
-            <div className="card stat-card">
-              <div className="stat-icon" style={{ color: 'var(--danger)', background: 'rgba(229, 62, 62, 0.1)' }}><AlertTriangle /></div>
-              <div className="stat-info">
-                <h3>Di Luar Kompetensi</h3>
-                <p>{results.summary.patientsOutsideCompetency.toLocaleString()}</p>
+
+            <div className="card stat-card relative overflow-hidden" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', backgroundColor: '#fff', border: '2px solid #ef4444', borderRadius: '1rem', boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.2)' }}>
+              <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-lg">Perlu Dibenahi</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="stat-icon animate-pulse" style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: '0.75rem' }}><AlertTriangle /></div>
+                <div>
+                  <h3 style={{ fontSize: '0.875rem', fontWeight: 900, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Potensi Loss Pendapatan</h3>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>{results.summary.patientsOutsideCompetency.toLocaleString()} Pasien</p>
+                </div>
+              </div>
+              <div style={{ paddingTop: '1rem', borderTop: '1px dashed #fca5a5' }}>
+                <p style={{ fontSize: '1.5rem', fontWeight: 900, color: '#b91c1c', margin: 0 }}>{formatRupiah(results.summary.tarifOutsideCompetency)}</p>
+                <p style={{ fontSize: '0.7rem', fontWeight: 700, color: '#ef4444', margin: '0.25rem 0 0 0' }}>Di Luar Kompetensi RS (Tidak Sesuai)</p>
               </div>
             </div>
           </div>
