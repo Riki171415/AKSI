@@ -331,29 +331,37 @@ exports.analyzeTxt = async (req, res) => {
         // Track Surplus/Defisit
         if (inacbgCode) {
             const selisihIna = tarif - tarifRs;
-            if (!inaSurplus[inacbgCode]) inaSurplus[inacbgCode] = { count: 0, selisihTotal: 0, desc: inacbgDesc };
-            if (!inaDefisit[inacbgCode]) inaDefisit[inacbgCode] = { count: 0, selisihTotal: 0, desc: inacbgDesc };
+            if (!inaSurplus[inacbgCode]) inaSurplus[inacbgCode] = { count: 0, selisihTotal: 0, desc: inacbgDesc, totalTarif: 0, totalTarifRs: 0 };
+            if (!inaDefisit[inacbgCode]) inaDefisit[inacbgCode] = { count: 0, selisihTotal: 0, desc: inacbgDesc, totalTarif: 0, totalTarifRs: 0 };
             
             if (selisihIna >= 0) {
                 inaSurplus[inacbgCode].count++;
                 inaSurplus[inacbgCode].selisihTotal += selisihIna;
+                inaSurplus[inacbgCode].totalTarif += tarif;
+                inaSurplus[inacbgCode].totalTarifRs += tarifRs;
             } else {
                 inaDefisit[inacbgCode].count++;
                 inaDefisit[inacbgCode].selisihTotal += Math.abs(selisihIna);
+                inaDefisit[inacbgCode].totalTarif += tarif;
+                inaDefisit[inacbgCode].totalTarifRs += tarifRs;
             }
         }
         
         if (drgCode) {
             const selisihIdrg = tarifIdrgRaw - tarifRs;
-            if (!idrgSurplus[drgCode]) idrgSurplus[drgCode] = { count: 0, selisihTotal: 0, desc: drgDesc };
-            if (!idrgDefisit[drgCode]) idrgDefisit[drgCode] = { count: 0, selisihTotal: 0, desc: drgDesc };
+            if (!idrgSurplus[drgCode]) idrgSurplus[drgCode] = { count: 0, selisihTotal: 0, desc: drgDesc, totalTarif: 0, totalTarifRs: 0 };
+            if (!idrgDefisit[drgCode]) idrgDefisit[drgCode] = { count: 0, selisihTotal: 0, desc: drgDesc, totalTarif: 0, totalTarifRs: 0 };
             
             if (selisihIdrg >= 0) {
                 idrgSurplus[drgCode].count++;
                 idrgSurplus[drgCode].selisihTotal += selisihIdrg;
+                idrgSurplus[drgCode].totalTarif += tarifIdrgRaw;
+                idrgSurplus[drgCode].totalTarifRs += tarifRs;
             } else {
                 idrgDefisit[drgCode].count++;
                 idrgDefisit[drgCode].selisihTotal += Math.abs(selisihIdrg);
+                idrgDefisit[drgCode].totalTarif += tarifIdrgRaw;
+                idrgDefisit[drgCode].totalTarifRs += tarifRs;
             }
         }
         
@@ -715,7 +723,7 @@ exports.analyzeTxt = async (req, res) => {
     const getTop10Selisih = (obj) => Object.entries(obj)
         .filter(e => e[1].count > 0 && e[1].selisihTotal > 0)
         .sort((a,b) => b[1].selisihTotal - a[1].selisihTotal)
-        .slice(0, 10).map(e => ({ code: e[0], desc: e[1].desc, count: e[1].count, selisihVsRs: e[1].selisihTotal }));
+        .slice(0, 10).map(e => ({ code: e[0], desc: e[1].desc, count: e[1].count, selisihVsRs: e[1].selisihTotal, totalTarif: e[1].totalTarif, totalTarifRs: e[1].totalTarifRs }));
 
     const dpjpDataArray = Object.values(dpjpMap).sort((a, b) => b.count - a.count);
 

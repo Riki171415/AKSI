@@ -742,6 +742,8 @@ export default function Dashboard() {
               </div>
             ) },
             { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Total Tarif INA-CBG', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarif || 0, true) },
+            { header: 'Total Tarif RS', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarifRs || 0, true) },
             { header: 'Selisih', className: 'text-right text-emerald', render: r => '+' + formatRp(r.selisihVsRs) }
           ]} />
         </div>
@@ -764,6 +766,8 @@ export default function Dashboard() {
               </div>
             ) },
             { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Total Tarif INA-CBG', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarif, true) },
+            { header: 'Total Tarif RS', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarifRs, true) },
             { header: 'Selisih', className: 'text-right text-rose', render: r => '-' + formatRp(Math.abs(r.selisihVsRs)) }
           ]} />
         </div>
@@ -787,6 +791,8 @@ export default function Dashboard() {
               </div>
             ) },
             { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Total Tarif iDRG', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarif || 0, true) },
+            { header: 'Total Tarif RS', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarifRs || 0, true) },
             { header: 'Selisih', className: 'text-right text-emerald', render: r => '+' + formatRp(r.selisihVsRs) }
           ]} />
         </div>
@@ -809,6 +815,8 @@ export default function Dashboard() {
               </div>
             ) },
             { header: 'Kasus', className: 'text-center', render: r => <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', borderRadius: '1rem', fontSize: '0.75rem' }}>{r.count}</span> },
+            { header: 'Total Tarif iDRG', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarif || 0, true) },
+            { header: 'Total Tarif RS', className: 'text-right font-bold text-slate', render: r => formatRp(r.totalTarifRs || 0, true) },
             { header: 'Selisih', className: 'text-right text-rose', render: r => '-' + formatRp(Math.abs(r.selisihVsRs)) }
           ]} />
         </div>
