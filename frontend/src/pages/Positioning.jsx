@@ -3,12 +3,14 @@ import axios from 'axios';
 import { Target, Activity, ActivitySquare, AlertCircle, Info, TrendingDown, ArrowUpRight, ChevronDown, ChevronUp, Download, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label, Cell, PieChart, Pie, BarChart, Bar, Legend } from 'recharts';
 import { exportToExcel, exportChartToPNG } from '../utils/exportUtils';
+import PasswordModal from '../components/PasswordModal';
 
 export default function Positioning() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     const fetchLatestAnalysis = async () => {
@@ -193,7 +195,7 @@ export default function Positioning() {
             </p>
           </div>
         </div>
-        <button onClick={handleExportExcel} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
+        <button onClick={() => setShowPasswordModal(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
           <Download size={16} /> Export Excel
         </button>
       </div>
@@ -489,5 +491,12 @@ export default function Positioning() {
         </table>
       </div>
     </div>
+
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={handleExportExcel}
+        fileName="Positioning RS.xlsx"
+      />
   );
 }

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Stethoscope, Info, ChevronDown, ChevronUp, AlertCircle, Search, Download } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 import { exportToExcel } from '../utils/exportUtils';
+import PasswordModal from '../components/PasswordModal';
 
 export default function Dpjp() {
   const [analysis, setAnalysis] = useState(null);
@@ -10,6 +11,7 @@ export default function Dpjp() {
   const [error, setError] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     const fetchLatestAnalysis = async () => {
@@ -170,7 +172,7 @@ export default function Dpjp() {
               style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.5rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
             />
           </div>
-          <button onClick={handleExportExcel} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
+          <button onClick={() => setShowPasswordModal(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
             <Download size={16} /> Export Excel
           </button>
         </div>
@@ -392,5 +394,12 @@ export default function Dpjp() {
         </table>
       </div>
     </div>
+
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={handleExportExcel}
+        fileName="Kompetensi DPJP.xlsx"
+      />
   );
 }

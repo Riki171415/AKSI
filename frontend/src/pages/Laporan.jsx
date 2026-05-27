@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { exportToExcel } from '../utils/exportUtils';
 import { FileText, Download, Table as TableIcon, AlertCircle, TrendingUp, Activity, Layers, ActivitySquare, Ban, HelpCircle } from 'lucide-react';
+import PasswordModal from '../components/PasswordModal';
 
 export default function Laporan() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('inaCbg');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     const fetchLatestAnalysis = async () => {
@@ -424,7 +426,7 @@ export default function Laporan() {
             </p>
           </div>
         </div>
-        <button onClick={handleExportExcel} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
+        <button onClick={() => setShowPasswordModal(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900 }}>
           <Download size={16} /> Export Excel
         </button>
       </div>
@@ -462,6 +464,16 @@ export default function Laporan() {
         {activeTab === 'ungroupable' && renderSimpleList(r.ungroupable, 'KASUS UNGROUPABLE')}
         {activeTab === 'unmapped' && renderSimpleList(r.unmapped, 'KASUS BELUM ADA MAPPING KOMPETENSI')}
       </div>
+
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={handleExportExcel}
+        fileName="Laporan Standar V5.xlsx"
+      />
     </div>
   );
 }
+
+
+
