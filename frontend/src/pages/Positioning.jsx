@@ -114,7 +114,7 @@ export default function Positioning() {
   
   const lossPct = totalRev > 0 ? ((totalLoss / totalRev) * 100).toFixed(1) : 0;
 
-  const handleExportExcel = () => {
+  const handleExportExcel = (password) => {
     if (!analysis || !analysis.kelompokLayananData) return;
     const data = analysis.kelompokLayananData;
     
@@ -137,7 +137,7 @@ export default function Positioning() {
 
     exportToExcel('Positioning_RS', [
         { name: 'POSITIONING', columns: cols, data: rows, chartElementId: 'positioning-scatter-chart' }
-    ]);
+    ], password);
   };
 
   let sumTIna = 0;
@@ -180,6 +180,7 @@ export default function Positioning() {
   ];
 
   return (
+    <>
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -492,11 +493,12 @@ export default function Positioning() {
       </div>
     </div>
 
-      <PasswordModal
-        isOpen={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-        onSuccess={handleExportExcel}
-        fileName="Positioning RS.xlsx"
-      />
+    <PasswordModal
+      isOpen={showPasswordModal}
+      onClose={() => setShowPasswordModal(false)}
+      onSuccess={handleExportExcel}
+      fileName="Positioning RS.xlsx"
+    />
+    </>
   );
 }

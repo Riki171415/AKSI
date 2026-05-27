@@ -50,7 +50,7 @@ export default function Laporan() {
     return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = (password) => {
     if (!analysis || !analysis.reports) return;
     const r = analysis.reports;
     
@@ -98,7 +98,7 @@ export default function Laporan() {
         { name: 'IDRG RAWAT JALAN', columns: drgCols, data: r.idrg_rj.map(mapDrg) }
     ];
     
-    exportToExcel('Laporan_Standar_V5', sheets);
+    exportToExcel('Laporan_Standar_V5', sheets, password);
   };
 
   if (loading) {

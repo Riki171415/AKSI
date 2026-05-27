@@ -1,8 +1,9 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
+import XlsxPopulate from 'xlsx-populate/browser/xlsx-populate';
 
-export const exportToExcel = async (workbookName, sheets) => {
+export const exportToExcel = async (workbookName, sheets, password = null) => {
     try {
         const workbook = new ExcelJS.Workbook();
         
@@ -33,7 +34,6 @@ export const exportToExcel = async (workbookName, sheets) => {
                         extension: 'png',
                     });
                     
-                    // Add some spacing
                     ws.addRow([]);
                     ws.addRow(['--- GRAFIK ---']);
                     
@@ -46,8 +46,17 @@ export const exportToExcel = async (workbookName, sheets) => {
             }
         }
         
-        const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `${workbookName}.xlsx`);
+        // Generate ExcelJS buffer
+        const excelBuffer = await workbook.xlsx.writeBuffer();
+
+        if (password) {
+            // Encrypt with xlsx-populate (real file-open password)
+            const populateWb = await XlsxPopulate.fromDataAsync(excelBuffer);
+            const encryptedBuffer = await populateWb.outputAsync({ password });
+            saveAs(new Blob([encryptedBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${workbookName}.xlsx`);
+        } else {
+            saveAs(new Blob([excelBuffer]), `${workbookName}.xlsx`);
+        }
     } catch (err) {
         console.error("Excel export error:", err);
         alert("Gagal mengekspor Excel: " + err.message);

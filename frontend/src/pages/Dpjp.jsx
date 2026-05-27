@@ -103,7 +103,7 @@ export default function Dpjp() {
     return null;
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = (password) => {
     if (!analysis || !analysis.dpjpData) return;
     const data = analysis.dpjpData;
     
@@ -126,7 +126,7 @@ export default function Dpjp() {
 
     exportToExcel('Kompetensi_DPJP', [
         { name: 'DPJP', columns: cols, data: rows }
-    ]);
+    ], password);
   };
 
   let sumTIna = 0;
@@ -146,6 +146,7 @@ export default function Dpjp() {
   });
 
   return (
+    <>
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -395,11 +396,12 @@ export default function Dpjp() {
       </div>
     </div>
 
-      <PasswordModal
-        isOpen={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-        onSuccess={handleExportExcel}
-        fileName="Kompetensi DPJP.xlsx"
-      />
+    <PasswordModal
+      isOpen={showPasswordModal}
+      onClose={() => setShowPasswordModal(false)}
+      onSuccess={handleExportExcel}
+      fileName="Kompetensi DPJP.xlsx"
+    />
+    </>
   );
 }
