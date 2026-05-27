@@ -54,9 +54,12 @@ export default function Laporan() {
     if (!analysis || !analysis.reports) return;
     const r = analysis.reports;
     
+    // === 1. KLAIM INA-CBGS ===
     const inaCols = [
         { header: 'NO.', key: 'no', width: 5 },
         { header: 'BULAN', key: 'bulan', width: 20 },
+        { header: 'SL 0 KASUS', key: 'sl0_c', width: 15 },
+        { header: 'SL 0 TARIF', key: 'sl0_t', width: 20 },
         { header: 'SL 1 KASUS', key: 'sl1_c', width: 15 },
         { header: 'SL 1 TARIF', key: 'sl1_t', width: 20 },
         { header: 'SL 2 KASUS', key: 'sl2_c', width: 15 },
@@ -64,16 +67,45 @@ export default function Laporan() {
         { header: 'SL 3 KASUS', key: 'sl3_c', width: 15 },
         { header: 'SL 3 TARIF', key: 'sl3_t', width: 20 },
         { header: 'TOTAL KASUS', key: 'tot_c', width: 15 },
-        { header: 'TOTAL TARIF', key: 'tot_t', width: 20 }
+        { header: 'TOTAL KLAIM', key: 'tot_t', width: 20 }
     ];
     const inaData = r.inaCbg.map((d, i) => ({
-        no: i + 1, bulan: d.monthKey,
+        no: i + 1, bulan: formatMonthIndo(d.monthKey),
+        sl0_c: d.sl0_c, sl0_t: d.sl0_t,
         sl1_c: d.sl1_c, sl1_t: d.sl1_t,
         sl2_c: d.sl2_c, sl2_t: d.sl2_t,
         sl3_c: d.sl3_c, sl3_t: d.sl3_t,
         tot_c: d.total_c, tot_t: d.total_t
     }));
 
+    // === 2. KLAIM iDRG ===
+    const idrgCols = [
+        { header: 'NO.', key: 'no', width: 5 },
+        { header: 'BULAN', key: 'bulan', width: 20 },
+        { header: 'DASAR KASUS', key: 'd_c', width: 13 },
+        { header: 'MADYA KASUS', key: 'm_c', width: 13 },
+        { header: 'UTAMA KASUS', key: 'u_c', width: 13 },
+        { header: 'PARIPURNA KASUS', key: 'p_c', width: 15 },
+        { header: 'DASAR KLAIM', key: 'd_t', width: 20 },
+        { header: 'MADYA KLAIM', key: 'm_t', width: 20 },
+        { header: 'UTAMA KLAIM', key: 'u_t', width: 20 },
+        { header: 'PARIPURNA KLAIM', key: 'p_t', width: 20 },
+        { header: 'BELUM MAPPING KASUS', key: 'unmapped_c', width: 20 },
+        { header: 'BELUM MAPPING KLAIM', key: 'unmapped_t', width: 20 },
+        { header: 'TOP-UP KASUS', key: 'topup_c', width: 15 },
+        { header: 'TOP-UP KLAIM', key: 'topup_t', width: 20 },
+        { header: 'TOTAL KASUS', key: 'total_c', width: 15 }
+    ];
+    const idrgData = r.idrg.map((d, i) => ({
+        no: i + 1, bulan: formatMonthIndo(d.monthKey),
+        d_c: d.d_c, m_c: d.m_c, u_c: d.u_c, p_c: d.p_c,
+        d_t: d.d_t, m_t: d.m_t, u_t: d.u_t, p_t: d.p_t,
+        unmapped_c: d.unmapped_c, unmapped_t: d.unmapped_t,
+        topup_c: d.topup_c, topup_t: d.topup_t,
+        total_c: d.total_c
+    }));
+
+    // === 3 & 4. iDRG RAWAT INAP / RAWAT JALAN ===
     const drgCols = [
         { header: 'NO.', key: 'no', width: 5 },
         { header: 'KODE DRG', key: 'drg', width: 15 },
@@ -92,10 +124,56 @@ export default function Laporan() {
         s1: d.tRs - d.tIna, s2: d.tRs - d.tIdrg, s3: d.tIdrg - d.tIna
     });
 
+    // === 5. DATA GABUNGAN ===
+    const gabCols = [
+        { header: 'NO.', key: 'no', width: 5 },
+        { header: 'BULAN', key: 'bulan', width: 20 },
+        { header: 'TARIF RS RAJAL', key: 'rj_tRs', width: 20 },
+        { header: 'TARIF RS RANAP', key: 'ri_tRs', width: 20 },
+        { header: 'INA-CBG RAJAL KASUS', key: 'inacbg_rj_c', width: 18 },
+        { header: 'INA-CBG RANAP KASUS', key: 'inacbg_ri_c', width: 18 },
+        { header: 'INA-CBG RAJAL KLAIM', key: 'inacbg_rj_t', width: 20 },
+        { header: 'INA-CBG RANAP KLAIM', key: 'inacbg_ri_t', width: 20 },
+        { header: 'iDRG RAJAL KASUS', key: 'idrg_rj_c', width: 18 },
+        { header: 'iDRG RANAP KASUS', key: 'idrg_ri_c', width: 18 },
+        { header: 'iDRG RAJAL KLAIM', key: 'idrg_rj_t', width: 20 },
+        { header: 'iDRG RANAP KLAIM', key: 'idrg_ri_t', width: 20 },
+        { header: 'UNGROUPABLE KASUS', key: 'ungroup_c', width: 18 }
+    ];
+    const gabData = (r.gabungan || []).map((d, i) => ({
+        no: i + 1, bulan: formatMonthIndo(d.monthKey),
+        rj_tRs: d.rj_tRs, ri_tRs: d.ri_tRs,
+        inacbg_rj_c: d.inacbg_rj_c, inacbg_ri_c: d.inacbg_ri_c,
+        inacbg_rj_t: d.inacbg_rj_t, inacbg_ri_t: d.inacbg_ri_t,
+        idrg_rj_c: d.idrg_rj_c, idrg_ri_c: d.idrg_ri_c,
+        idrg_rj_t: d.idrg_rj_t, idrg_ri_t: d.idrg_ri_t,
+        ungroup_c: d.ungroup_c
+    }));
+
+    // === 6 & 7. UNGROUPABLE & BELUM MAPPING ===
+    const simpleCols = [
+        { header: 'NO.', key: 'no', width: 5 },
+        { header: 'MRN', key: 'mrn', width: 15 },
+        { header: 'SEP', key: 'sep', width: 20 },
+        { header: 'NAMA PASIEN', key: 'nama', width: 25 },
+        { header: 'DESKRIPSI', key: 'desc', width: 40 },
+        { header: 'KODE ICD', key: 'icd', width: 15 },
+        { header: 'JENIS LAYANAN', key: 'type', width: 15 },
+        { header: 'KETERANGAN', key: 'ket', width: 20 }
+    ];
+    const mapSimple = (d, i) => ({
+        no: i + 1, mrn: d.mrn, sep: d.sep, nama: d.nama,
+        desc: d.desc, icd: d.icd, type: d.type, ket: d.ket
+    });
+
     const sheets = [
         { name: 'KLAIM INA-CBGS', columns: inaCols, data: inaData },
-        { name: 'IDRG RAWAT INAP', columns: drgCols, data: r.idrg_ri.map(mapDrg) },
-        { name: 'IDRG RAWAT JALAN', columns: drgCols, data: r.idrg_rj.map(mapDrg) }
+        { name: 'KLAIM iDRG', columns: idrgCols, data: idrgData },
+        { name: 'iDRG RAWAT INAP', columns: drgCols, data: (r.idrg_ri || []).map(mapDrg) },
+        { name: 'iDRG RAWAT JALAN', columns: drgCols, data: (r.idrg_rj || []).map(mapDrg) },
+        { name: 'DATA GABUNGAN', columns: gabCols, data: gabData },
+        { name: 'KASUS UNGROUPABLE', columns: simpleCols, data: (r.ungroupable || []).map(mapSimple) },
+        { name: 'BELUM ADA MAPPING', columns: simpleCols, data: (r.unmapped || []).map(mapSimple) }
     ];
     
     exportToExcel('Laporan_Standar_V5', sheets, password);
