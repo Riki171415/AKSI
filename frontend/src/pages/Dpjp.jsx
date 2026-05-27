@@ -124,8 +124,44 @@ export default function Dpjp() {
         tsc: d.tidak_sesuai_c, tstina: d.tidak_sesuai_ina, tstidrg: d.tidak_sesuai_t
     }));
 
+    // Build details data
+    const detailCols = [
+        { header: 'NAMA DPJP', key: 'dpjp', width: 30 },
+        { header: 'KELOMPOK LAYANAN', key: 'layanan', width: 30 },
+        { header: 'LEVEL KOMPETENSI', key: 'level', width: 20 },
+        { header: 'KODE ICD', key: 'icd', width: 15 },
+        { header: 'DESKRIPSI ICD', key: 'desc', width: 40 },
+        { header: 'JUMLAH KASUS', key: 'cases', width: 15 },
+        { header: 'STATUS', key: 'status', width: 15 }
+    ];
+    
+    const detailRows = [];
+    data.forEach(d => {
+        if (!d.comps) return;
+        Object.entries(d.comps).forEach(([layananName, layananData]) => {
+            if (!layananData.levels) return;
+            ['DASAR', 'MADYA', 'UTAMA', 'PARIPURNA', 'BELUM_ADA_MAPPING'].forEach(lvl => {
+                const lvlData = layananData.levels[lvl];
+                if (lvlData && lvlData.icds) {
+                    lvlData.icds.forEach(icd => {
+                        detailRows.push({
+                            dpjp: d.name,
+                            layanan: layananName,
+                            level: lvl === 'BELUM_ADA_MAPPING' ? 'BELUM MAPPING' : lvl,
+                            icd: icd.code,
+                            desc: icd.desc,
+                            cases: icd.count,
+                            status: icd.isOutsideGroup ? 'Tidak Sesuai' : 'Sesuai'
+                        });
+                    });
+                }
+            });
+        });
+    });
+
     exportToExcel('Kompetensi_DPJP', [
-        { name: 'DPJP', columns: cols, data: rows }
+        { name: 'DPJP', columns: cols, data: rows },
+        { name: 'DETAIL KOMPETENSI', columns: detailCols, data: detailRows }
     ], password);
   };
 

@@ -135,8 +135,39 @@ export default function Positioning() {
         tsc: d.tidak_sesuai_c, tstina: d.tidak_sesuai_ina, tstidrg: d.tidak_sesuai_t
     }));
 
+    // Build details data
+    const detailCols = [
+        { header: 'KELOMPOK LAYANAN', key: 'layanan', width: 30 },
+        { header: 'LEVEL KOMPETENSI', key: 'level', width: 20 },
+        { header: 'KODE ICD', key: 'icd', width: 15 },
+        { header: 'DESKRIPSI ICD', key: 'desc', width: 40 },
+        { header: 'JUMLAH KASUS', key: 'cases', width: 15 },
+        { header: 'STATUS', key: 'status', width: 15 }
+    ];
+    
+    const detailRows = [];
+    data.forEach(d => {
+        if (!d.comps) return;
+        ['DASAR', 'MADYA', 'UTAMA', 'PARIPURNA', 'BELUM_ADA_MAPPING'].forEach(lvl => {
+            const lvlData = d.comps[lvl];
+            if (lvlData && lvlData.icds) {
+                lvlData.icds.forEach(icd => {
+                    detailRows.push({
+                        layanan: d.name,
+                        level: lvl === 'BELUM_ADA_MAPPING' ? 'BELUM MAPPING' : lvl,
+                        icd: icd.code,
+                        desc: icd.desc,
+                        cases: icd.count,
+                        status: icd.isOutsideGroup ? 'Tidak Sesuai' : 'Sesuai'
+                    });
+                });
+            }
+        });
+    });
+
     exportToExcel('Positioning_RS', [
-        { name: 'POSITIONING', columns: cols, data: rows, chartElementId: 'positioning-scatter-chart' }
+        { name: 'POSITIONING', columns: cols, data: rows, chartElementId: 'positioning-scatter-chart' },
+        { name: 'DETAIL POSITIONING', columns: detailCols, data: detailRows }
     ], password);
   };
 
