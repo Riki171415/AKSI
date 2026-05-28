@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api', apiRoutes);
+app.use('/', apiRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {

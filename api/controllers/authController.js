@@ -5,7 +5,7 @@ const { hospitalSettings } = require('../store');
 const { competencies } = require('../utils/csvLoader');
 
 const SECRET_KEY = 'AKSI_APCI_SECRET_KEY';
-const usersFilePath = path.join(__dirname, '../data/users.json');
+const usersFilePath = path.join(process.cwd(), 'api', 'data', 'users.json');
 
 const readUsers = () => {
     try {
