@@ -11,7 +11,7 @@ try {
     console.error("Could not load fallback dictionary");
 }
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 
 exports.uploadMiddleware = upload.single('file');
 
@@ -67,7 +67,8 @@ exports.analyzeTxt = async (req, res) => {
         return res.status(400).json({ message: 'File tidak ditemukan' });
     }
     
-    const filePath = req.file.path;
+    // Use buffer from memory storage (Vercel serverless - no disk access)
+    const fileBuffer = req.file.buffer;
     
     // Core KPIs
     let totalPatients = 0;
@@ -130,7 +131,8 @@ exports.analyzeTxt = async (req, res) => {
         unmapped: []
     };
     
-    const fileStream = fs.createReadStream(filePath);
+    const { Readable } = require('stream');
+    const fileStream = Readable.from([fileBuffer.toString('utf-8')]);
     const rl = readline.createInterface({
         input: fileStream,
         crlfDelay: Infinity
@@ -667,7 +669,7 @@ exports.analyzeTxt = async (req, res) => {
         }
     }
     
-    fs.unlinkSync(filePath);
+    // No file to unlink - using memory storage
     
     for (const g of Object.values(mdcMap)) {
         for (const lvl of ['BELUM_ADA_MAPPING', 'DASAR', 'MADYA', 'UTAMA', 'PARIPURNA']) {
