@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../utils/axios';
+import { analyzeTxtFile, loadResult, saveResult, clearResult } from '../utils/analyzer';
 import {
   PieChart, Users, Activity, User, BarChart3, TrendingUp, TrendingDown,
   Zap, Search, Stethoscope, ClipboardList, ActivitySquare, Layers,
@@ -16,29 +16,19 @@ export default function Dashboard() {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    fetchLatestAnalysis();
-  }, []);
+  const [progress, setProgress] = useState(0);
 
-  const fetchLatestAnalysis = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await api.get('/api/analyze/latest', config);
-      setResults(res.data);
+  useEffect(() => {
+    // Load from sessionStorage on mount
+    const saved = loadResult();
+    if (saved) {
+      setResults(saved);
       setError('');
-    } catch (err) {
-      if (err.response && err.response.status === 404) {
-        setError('Belum ada data analisis. Silakan unggah file TXT terlebih dahulu.');
-      } else if (err.response && err.response.status === 401) {
-        setError('Sesi telah berakhir, silakan login kembali.');
-      } else {
-        setError('Gagal mengambil data: ' + err.message);
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      setError('Belum ada data analisis. Silakan unggah file TXT terlebih dahulu.');
     }
-  };
+    setLoading(false);
+  }, []);
 
   const uploadRef = useRef(null);
   const appendRef = useRef(null);
@@ -46,57 +36,54 @@ export default function Dashboard() {
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!files || files.length === 0) return;
-    await uploadDirectly(files, false);
+    await processFiles(files, false);
   };
 
-  const uploadDirectly = async (targetFiles, appendMode = false) => {
+  const processFiles = async (targetFiles, appendMode = false) => {
     setUploading(true);
+    setProgress(0);
     const savedSettings = localStorage.getItem('iDRG_RS_Config');
-    
+    let myCompetencies = {};
+    if (savedSettings) {
+      try { myCompetencies = JSON.parse(savedSettings).competencies || {}; } catch(e) {}
+    }
+
     try {
-      const token = localStorage.getItem('token');
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      
-      let finalRes = null;
-      for (let i = 0; i < targetFiles.length; i++) {
-        const formData = new FormData();
-        formData.append('file', targetFiles[i]);
-        if (savedSettings) formData.append('rsConfig', savedSettings);
-        
+      let finalResult = null;
+      const fileList = Array.isArray(targetFiles) ? targetFiles : [targetFiles];
+
+      for (let i = 0; i < fileList.length; i++) {
         const isAppend = appendMode || i > 0;
-        const url = `/api/analyze${isAppend ? '?mode=append' : ''}`;
-        finalRes = await api.post(url, formData, config);
+        finalResult = await analyzeTxtFile(
+          fileList[i],
+          myCompetencies,
+          isAppend,
+          (pct) => setProgress(pct)
+        );
+        // Save intermediate result for append on next file
+        if (i < fileList.length - 1) saveResult(finalResult);
       }
-      
-      if (finalRes) {
-          setResults(finalRes.data);
-          setError('');
+
+      if (finalResult) {
+        saveResult(finalResult);
+        setResults(finalResult);
+        setError('');
       }
     } catch(err) {
-      if (err.response && err.response.status === 401) {
-        setError('Sesi Anda telah berakhir, silakan login kembali.');
-      } else {
-        setError('Gagal upload: ' + err.message);
-      }
+      setError('Gagal memproses file: ' + err.message);
     } finally {
       setUploading(false);
+      setProgress(0);
       setFiles([]);
       if (uploadRef.current) uploadRef.current.value = null;
     }
   };
 
-  const handleClear = async () => {
-    if (!window.confirm('Yakin ingin menghapus semua data analisis dari memori server?')) return;
-    try {
-      const token = localStorage.getItem('token');
-      await api.delete('/api/analyze/clear', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setResults(null);
-      setError('Data telah dihapus. Silakan upload file baru.');
-    } catch(err) {
-      setError('Gagal menghapus data: ' + err.message);
-    }
+  const handleClear = () => {
+    if (!window.confirm('Yakin ingin menghapus semua data analisis?')) return;
+    clearResult();
+    setResults(null);
+    setError('Data telah dihapus. Silakan upload file baru.');
   };
 
   if (loading) {
@@ -307,10 +294,10 @@ export default function Dashboard() {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {/* Hidden inputs */}
           <input ref={uploadRef} type="file" accept=".txt" style={{ display: 'none' }}
-            onChange={(e) => { if (e.target.files[0]) uploadDirectly(e.target.files[0], false); e.target.value = ''; }}
+            onChange={(e) => { if (e.target.files[0]) processFiles(e.target.files[0], false); e.target.value = ''; }}
           />
           <input ref={appendRef} type="file" accept=".txt" style={{ display: 'none' }}
-            onChange={(e) => { if (e.target.files[0]) uploadDirectly(e.target.files[0], true); e.target.value = ''; }}
+            onChange={(e) => { if (e.target.files[0]) processFiles(e.target.files[0], true); e.target.value = ''; }}
           />
 
           {/* Tambah Data */}
@@ -330,7 +317,7 @@ export default function Dashboard() {
             style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '0.5rem', fontWeight: 700, fontSize: '0.8rem', border: 'none', backgroundColor: 'white', color: 'var(--primary)', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', transition: 'all 0.2s' }}
             title="Ganti semua data dengan file baru"
           >
-            {uploading ? <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> MEMPROSES...</> : <><Upload size={16} /> GANTI DATA</>}
+            {uploading ? <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> MEMPROSES... {progress > 0 && `${progress}%`}</> : <><Upload size={16} /> GANTI DATA</>}
           </button>
 
           {/* Hapus Data */}

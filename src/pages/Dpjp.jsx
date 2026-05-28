@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/axios';
+import { loadResult } from '../utils/analyzer';
 import { Stethoscope, Info, ChevronDown, ChevronUp, AlertCircle, Search, Download } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 import { exportToExcel } from '../utils/exportUtils';
@@ -14,26 +14,13 @@ export default function Dpjp() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
-    const fetchLatestAnalysis = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await api.get('/api/analyze/latest', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setAnalysis(res.data);
-      } catch (err) {
-        if (err.response && err.response.status === 404) {
-          setError('Belum ada data analisis. Silakan unggah file TXT terlebih dahulu.');
-        } else if (err.response && err.response.status === 401) {
-          setError('Sesi telah berakhir, silakan login kembali.');
-        } else {
-          setError('Gagal mengambil data: ' + err.message);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLatestAnalysis();
+    const saved = loadResult();
+    if (saved) {
+      setAnalysis(saved);
+    } else {
+      setError('Belum ada data analisis. Silakan unggah file TXT di halaman Dashboard terlebih dahulu.');
+    }
+    setLoading(false);
   }, []);
 
   const formatRupiah = (val) => {

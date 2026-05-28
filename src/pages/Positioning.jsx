@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import api from '../utils/axios';
+import { loadResult } from '../utils/analyzer';
 import { Target, Activity, ActivitySquare, AlertCircle, Info, TrendingDown, ArrowUpRight, ChevronDown, ChevronUp, Download, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label, Cell, PieChart, Pie, BarChart, Bar, Legend } from 'recharts';
 import { exportToExcel, exportChartToPNG } from '../utils/exportUtils';
@@ -13,24 +13,13 @@ export default function Positioning() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
-    const fetchLatestAnalysis = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await api.get('/api/analyze/latest', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setAnalysis(res.data);
-      } catch (err) {
-        if (err.response && err.response.status === 404) {
-          setError(err.response.data.message);
-        } else {
-          setError('Gagal mengambil data analisis terbaru dari server.');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLatestAnalysis();
+    const saved = loadResult();
+    if (saved) {
+      setAnalysis(saved);
+    } else {
+      setError('Belum ada data analisis. Silakan unggah file TXT di halaman Dashboard terlebih dahulu.');
+    }
+    setLoading(false);
   }, []);
 
   const formatRupiah = (val) => {

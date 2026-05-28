@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/axios';
+import { loadResult } from '../utils/analyzer';
 import { exportToExcel } from '../utils/exportUtils';
 import { FileText, Download, Table as TableIcon, AlertCircle, TrendingUp, Activity, Layers, ActivitySquare, Ban, HelpCircle } from 'lucide-react';
 import PasswordModal from '../components/PasswordModal';
@@ -12,24 +12,13 @@ export default function Laporan() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
-    const fetchLatestAnalysis = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await api.get('/api/analyze/latest', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setAnalysis(res.data);
-      } catch (err) {
-        if (err.response && err.response.status === 404) {
-          setError(err.response.data.message);
-        } else {
-          setError('Gagal mengambil data analisis terbaru dari server.');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLatestAnalysis();
+    const saved = loadResult();
+    if (saved) {
+      setAnalysis(saved);
+    } else {
+      setError('Belum ada data analisis. Silakan unggah file TXT di halaman Dashboard terlebih dahulu.');
+    }
+    setLoading(false);
   }, []);
 
   const formatRupiah = (val) => {

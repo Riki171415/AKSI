@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/axios';
+import { clearResult } from '../utils/analyzer';
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
@@ -18,11 +18,7 @@ export default function Layout() {
   }
 
   const handleLogout = () => {
-    if (token) {
-      api.delete('/api/analyze/clear', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).catch(() => {});
-    }
+    clearResult();
     localStorage.removeItem('token');
     localStorage.removeItem('kodeRs');
     localStorage.removeItem('role');
@@ -55,11 +51,7 @@ export default function Layout() {
     
     // 3. Clear data on unload (reload / close tab)
     const handleUnload = () => {
-      fetch('/api/analyze/clear', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-        keepalive: true
-      }).catch(() => {});
+      clearResult();
       localStorage.removeItem('token');
       localStorage.removeItem('kodeRs');
       localStorage.removeItem('role');

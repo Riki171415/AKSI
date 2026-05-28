@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 
 const authController = require('../controllers/authController');
-const analysisController = require('../controllers/analysisController');
 const userController = require('../controllers/userController');
 const { verifyToken, requireAdmin } = require('../middleware/auth');
 
@@ -11,9 +10,6 @@ router.post('/login', authController.login);
 router.get('/settings', verifyToken, authController.getSettings);
 router.post('/settings', verifyToken, authController.saveSettings);
 
-router.post('/analyze', verifyToken, analysisController.uploadMiddleware, analysisController.analyzeTxt);
-router.get('/analyze/latest', verifyToken, analysisController.getLatestAnalysis);
-router.delete('/analyze/clear', verifyToken, analysisController.clearAnalysis);
 
 // User Management Routes (Admin only)
 router.get('/users', verifyToken, requireAdmin, userController.getAllUsers);
