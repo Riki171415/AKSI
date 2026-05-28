@@ -24,7 +24,7 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem('token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await axios.get('http://localhost:5000/api/analyze/latest', config);
+      const res = await axios.get('/api/analyze/latest', config);
       setResults(res.data);
       setError('');
     } catch (err) {
@@ -64,7 +64,7 @@ export default function Dashboard() {
         if (savedSettings) formData.append('rsConfig', savedSettings);
         
         const isAppend = appendMode || i > 0;
-        const url = `http://localhost:5000/api/analyze${isAppend ? '?mode=append' : ''}`;
+        const url = `/api/analyze${isAppend ? '?mode=append' : ''}`;
         finalRes = await axios.post(url, formData, config);
       }
       
@@ -89,7 +89,7 @@ export default function Dashboard() {
     if (!window.confirm('Yakin ingin menghapus semua data analisis dari memori server?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete('http://localhost:5000/api/analyze/clear', {
+      await axios.delete('/api/analyze/clear', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setResults(null);

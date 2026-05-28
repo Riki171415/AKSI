@@ -19,7 +19,7 @@ export default function Layout() {
 
   const handleLogout = () => {
     if (token) {
-      axios.delete('http://localhost:5000/api/analyze/clear', {
+      axios.delete('/api/analyze/clear', {
         headers: { Authorization: `Bearer ${token}` }
       }).catch(() => {});
     }
@@ -55,7 +55,7 @@ export default function Layout() {
     
     // 3. Clear data on unload (reload / close tab)
     const handleUnload = () => {
-      fetch('http://localhost:5000/api/analyze/clear', {
+      fetch('/api/analyze/clear', {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
         keepalive: true

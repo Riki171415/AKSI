@@ -40,7 +40,7 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.post('http://localhost:5000/api/login', { username, password });
+      const res = await axios.post('/api/login', { username, password });
       setPendingLoginData(res.data);
       setShowDisclaimer(true);
     } catch (err) {

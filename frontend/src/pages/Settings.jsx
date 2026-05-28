@@ -17,7 +17,7 @@ export default function Settings() {
     const fetchMaster = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/settings', {
+        const res = await axios.get('/api/settings', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAllCompetencies(res.data.allCompetencies || []);

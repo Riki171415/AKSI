@@ -15,7 +15,7 @@ export default function Laporan() {
     const fetchLatestAnalysis = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/analyze/latest', {
+        const res = await axios.get('/api/analyze/latest', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAnalysis(res.data);
