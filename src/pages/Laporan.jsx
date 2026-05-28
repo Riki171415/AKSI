@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 import { exportToExcel } from '../utils/exportUtils';
 import { FileText, Download, Table as TableIcon, AlertCircle, TrendingUp, Activity, Layers, ActivitySquare, Ban, HelpCircle } from 'lucide-react';
 import PasswordModal from '../components/PasswordModal';
@@ -15,7 +15,7 @@ export default function Laporan() {
     const fetchLatestAnalysis = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('/api/analyze/latest', {
+        const res = await api.get('/api/analyze/latest', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAnalysis(res.data);

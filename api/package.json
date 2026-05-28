@@ -4,6 +4,10 @@
   "description": "AKSI API Backend",
   "main": "index.js",
   "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "csv-parser": "^3.2.1",

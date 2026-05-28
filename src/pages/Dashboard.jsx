@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 import {
   PieChart, Users, Activity, User, BarChart3, TrendingUp, TrendingDown,
   Zap, Search, Stethoscope, ClipboardList, ActivitySquare, Layers,
@@ -24,7 +24,7 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem('token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await axios.get('/api/analyze/latest', config);
+      const res = await api.get('/api/analyze/latest', config);
       setResults(res.data);
       setError('');
     } catch (err) {
@@ -65,7 +65,7 @@ export default function Dashboard() {
         
         const isAppend = appendMode || i > 0;
         const url = `/api/analyze${isAppend ? '?mode=append' : ''}`;
-        finalRes = await axios.post(url, formData, config);
+        finalRes = await api.post(url, formData, config);
       }
       
       if (finalRes) {
@@ -89,7 +89,7 @@ export default function Dashboard() {
     if (!window.confirm('Yakin ingin menghapus semua data analisis dari memori server?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete('/api/analyze/clear', {
+      await api.delete('/api/analyze/clear', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setResults(null);

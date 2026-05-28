@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 import { Stethoscope, Info, ChevronDown, ChevronUp, AlertCircle, Search, Download } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 import { exportToExcel } from '../utils/exportUtils';
@@ -17,7 +17,7 @@ export default function Dpjp() {
     const fetchLatestAnalysis = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('/api/analyze/latest', {
+        const res = await api.get('/api/analyze/latest', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAnalysis(res.data);

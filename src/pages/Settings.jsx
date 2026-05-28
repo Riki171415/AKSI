@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 
 export default function Settings() {
   const [allCompetencies, setAllCompetencies] = useState([]);
@@ -17,7 +17,7 @@ export default function Settings() {
     const fetchMaster = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('/api/settings', {
+        const res = await api.get('/api/settings', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAllCompetencies(res.data.allCompetencies || []);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 import { Users, UserPlus, Edit, Trash2, Shield, X, Save } from 'lucide-react';
 
 export default function UserManagement() {
@@ -22,7 +22,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('/api/users', {
+      const res = await api.get('/api/users', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(res.data);
@@ -89,9 +89,9 @@ export default function UserManagement() {
       }
 
       if (editingId) {
-        await axios.put(`/api/users/${editingId}`, payload, { headers });
+        await api.put(`/api/users/${editingId}`, payload, { headers });
       } else {
-        await axios.post('/api/users', payload, { headers });
+        await api.post('/api/users', payload, { headers });
       }
       
       handleCloseModal();
@@ -106,7 +106,7 @@ export default function UserManagement() {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/users/${id}`, {
+      await api.delete(`/api/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchUsers();

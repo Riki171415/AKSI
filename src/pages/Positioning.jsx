@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 import { Target, Activity, ActivitySquare, AlertCircle, Info, TrendingDown, ArrowUpRight, ChevronDown, ChevronUp, Download, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label, Cell, PieChart, Pie, BarChart, Bar, Legend } from 'recharts';
 import { exportToExcel, exportChartToPNG } from '../utils/exportUtils';
@@ -16,7 +16,7 @@ export default function Positioning() {
     const fetchLatestAnalysis = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('/api/analyze/latest', {
+        const res = await api.get('/api/analyze/latest', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAnalysis(res.data);

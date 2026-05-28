@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/axios';
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
@@ -19,7 +19,7 @@ export default function Layout() {
 
   const handleLogout = () => {
     if (token) {
-      axios.delete('/api/analyze/clear', {
+      api.delete('/api/analyze/clear', {
         headers: { Authorization: `Bearer ${token}` }
       }).catch(() => {});
     }
