@@ -5,11 +5,22 @@ const { hospitalSettings } = require('../store');
 const { competencies } = require('../utils/csvLoader');
 
 const SECRET_KEY = 'AKSI_APCI_SECRET_KEY';
-const usersFilePath = path.join(process.cwd(), 'api', 'data', 'users.json');
+
+const getUsersFilePath = () => {
+    const possiblePaths = [
+        path.join(__dirname, '..', 'data', 'users.json'),
+        path.join(process.cwd(), 'api', 'data', 'users.json'),
+        path.join(process.cwd(), 'data', 'users.json'),
+    ];
+    for (const p of possiblePaths) {
+        if (require('fs').existsSync(p)) return p;
+    }
+    return possiblePaths[0]; // fallback
+};
 
 const readUsers = () => {
     try {
-        const data = fs.readFileSync(usersFilePath, 'utf8');
+        const data = fs.readFileSync(getUsersFilePath(), 'utf8');
         return JSON.parse(data);
     } catch (err) {
         return [];

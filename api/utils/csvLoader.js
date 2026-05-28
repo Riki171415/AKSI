@@ -13,9 +13,21 @@ const levelValues = {
 };
 
 function loadCSV() {
-    const csvPath = path.join(process.cwd(), 'api', 'data', 'ICD Kompetensi Layanan.csv');
-    if (!fs.existsSync(csvPath)) {
-        console.error("CSV file not found at", csvPath);
+    // Try multiple paths for Vercel serverless compatibility
+    const possiblePaths = [
+        path.join(__dirname, '..', 'data', 'ICD Kompetensi Layanan.csv'),
+        path.join(__dirname, 'data', 'ICD Kompetensi Layanan.csv'),
+        path.join(process.cwd(), 'api', 'data', 'ICD Kompetensi Layanan.csv'),
+        path.join(process.cwd(), 'data', 'ICD Kompetensi Layanan.csv'),
+    ];
+    
+    let csvPath = null;
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) { csvPath = p; break; }
+    }
+    
+    if (!csvPath) {
+        console.error("CSV file not found. Tried:", possiblePaths);
         return;
     }
     const content = fs.readFileSync(csvPath, 'utf-8');
