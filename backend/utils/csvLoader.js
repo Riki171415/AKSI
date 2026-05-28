@@ -13,7 +13,7 @@ const levelValues = {
 };
 
 function loadCSV() {
-    const csvPath = path.join(__dirname, '..', 'data', 'ICD Kompetensi Layanan.csv');
+    const csvPath = path.join(process.cwd(), 'backend', 'data', 'ICD Kompetensi Layanan.csv');
     if (!fs.existsSync(csvPath)) {
         console.error("CSV file not found at", csvPath);
         return;
