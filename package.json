@@ -1,25 +1,35 @@
 {
-  "name": "aksi-apci",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Riki171415/AKSI.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/Riki171415/AKSI/issues"
-  },
-  "homepage": "https://github.com/Riki171415/AKSI#readme",
   "dependencies": {
-    "concurrently": "^9.2.1"
+    "axios": "^1.16.1",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^1.16.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router-dom": "^7.15.1",
+    "recharts": "^3.8.1",
+    "xlsx-populate": "^1.21.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "vite": "^8.0.12"
   }
 }
