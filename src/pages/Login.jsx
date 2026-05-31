@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../utils/axios';
 import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, Smartphone, RefreshCw } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -11,6 +12,14 @@ export default function Login() {
   const [captchaMath, setCaptchaMath] = useState({ num1: 0, num2: 0 });
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [pendingLoginData, setPendingLoginData] = useState(null);
+
+  // MFA step
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [tempToken, setTempToken] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const otpRefs = useRef([]);
+
   const navigate = useNavigate();
 
   const generateCaptcha = () => {
@@ -20,29 +29,30 @@ export default function Login() {
     setCaptchaAnswer('');
   };
 
-  useEffect(() => {
-    generateCaptcha();
-  }, []);
+  useEffect(() => { generateCaptcha(); }, []);
+
+  // ── Step 1: Username + Password ──────────────────────────────────────────
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Username dan Password tidak boleh kosong');
-      return;
-    }
-    
+    if (!username || !password) { setError('Username dan Password tidak boleh kosong'); return; }
     if (parseInt(captchaAnswer) !== (captchaMath.num1 + captchaMath.num2)) {
       setError('Jawaban verifikasi keamanan (Captcha) salah.');
-      generateCaptcha();
-      return;
+      generateCaptcha(); return;
     }
-    
-    setLoading(true);
-    setError('');
+
+    setLoading(true); setError('');
     try {
       const res = await api.post('/api/login', { username, password });
-      setPendingLoginData(res.data);
-      setShowDisclaimer(true);
+
+      if (res.data.mfaRequired) {
+        // Step 2: Need OTP
+        setTempToken(res.data.tempToken);
+        setMfaRequired(true);
+      } else {
+        setPendingLoginData(res.data);
+        setShowDisclaimer(true);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal login. Periksa koneksi ke server.');
       generateCaptcha();
@@ -50,6 +60,33 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  // ── Step 2: MFA OTP verification ────────────────────────────────────────
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    const code = otpCode.replace(/\s/g, '');
+    if (code.length !== 6) { setError('Masukkan 6 digit kode OTP'); return; }
+
+    setOtpLoading(true); setError('');
+    try {
+      const res = await api.post('/api/auth/mfa/verify-login', { tempToken, otpCode: code });
+      setPendingLoginData(res.data);
+      setShowDisclaimer(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Kode OTP tidak valid');
+      setOtpCode('');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleOtpInput = (val) => {
+    const clean = val.replace(/\D/g, '').slice(0, 6);
+    setOtpCode(clean);
+  };
+
+  // ── Disclaimer agree/disagree ────────────────────────────────────────────
 
   const handleAgree = () => {
     if (pendingLoginData) {
@@ -66,6 +103,15 @@ export default function Login() {
     setPendingLoginData(null);
   };
 
+  const handleBackToLogin = () => {
+    setMfaRequired(false);
+    setTempToken('');
+    setOtpCode('');
+    setError('');
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
   return (
     <div className="login-container">
       <div></div>
@@ -73,63 +119,102 @@ export default function Login() {
         <div className="logo-container" style={{ justifyContent: 'center', marginBottom: '2rem' }}>
           <img src="/logo_apci.png" alt="APCI Logo" style={{ height: '80px' }} />
         </div>
-        <h2 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Selamat Datang</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', textAlign: 'center' }}>
-          Analisis Klaim & Kompetensi Rumah Sakit
-        </p>
 
-        {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(229, 62, 62, 0.1)', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>{error}</div>}
+        {!mfaRequired ? (
+          <>
+            <h2 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Selamat Datang</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', textAlign: 'center' }}>
+              Analisis Klaim & Kompetensi Rumah Sakit
+            </p>
 
-        <form onSubmit={handleLogin}>
-          <div className="input-group">
-            <label>Username</label>
-            <input 
-              type="text" 
-              placeholder="Masukkan username" 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>Password</label>
-            <input 
-              type="password" 
-              placeholder="Masukkan password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+            {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(229, 62, 62, 0.1)', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>{error}</div>}
 
-          <div className="input-group">
-            <label>Verifikasi Keamanan (Berapa {captchaMath.num1} + {captchaMath.num2}?)</label>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <input 
-                  type="number" 
-                  placeholder="Jawaban" 
-                  value={captchaAnswer}
-                  onChange={(e) => setCaptchaAnswer(e.target.value)}
+            <form onSubmit={handleLogin}>
+              <div className="input-group">
+                <label>Username</label>
+                <input type="text" placeholder="Masukkan username" value={username} onChange={e => setUsername(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Password</label>
+                <input type="password" placeholder="Masukkan password" value={password} onChange={e => setPassword(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Verifikasi Keamanan (Berapa {captchaMath.num1} + {captchaMath.num2}?)</label>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <input type="number" placeholder="Jawaban" value={captchaAnswer} onChange={e => setCaptchaAnswer(e.target.value)} />
+                  </div>
+                  <button type="button" onClick={generateCaptcha} className="btn-outline" style={{ padding: '0.75rem', height: '100%' }} title="Ganti Pertanyaan">🔄</button>
+                </div>
+              </div>
+              <button type="submit" className="btn-primary btn-block" disabled={loading} style={{ marginTop: '1.5rem' }}>
+                {loading ? <span className="spinner"></span> : 'Masuk Sistem'}
+              </button>
+            </form>
+          </>
+        ) : (
+          /* ── MFA Step ── */
+          <>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '70px', height: '70px', borderRadius: '50%', margin: '0 auto 1rem',
+                background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 8px 25px rgba(14,165,233,0.35)'
+              }}>
+                <ShieldCheck size={34} color="white" />
+              </div>
+              <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>
+                Verifikasi Dua Faktor
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
+                Buka aplikasi <strong>Google / Microsoft Authenticator</strong> dan masukkan kode 6 digit untuk akun <strong>AKSI-APCI</strong>
+              </p>
+            </div>
+
+            {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(229, 62, 62, 0.1)', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>{error}</div>}
+
+            <form onSubmit={handleOtpSubmit}>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Smartphone size={16} /> Kode OTP (6 digit)
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="_ _ _ _ _ _"
+                  value={otpCode}
+                  onChange={e => handleOtpInput(e.target.value)}
+                  style={{
+                    textAlign: 'center', fontSize: '2rem', fontWeight: 900,
+                    letterSpacing: '0.5rem', padding: '1rem'
+                  }}
+                  autoFocus
                 />
               </div>
-              <button 
-                type="button" 
-                onClick={generateCaptcha} 
-                className="btn-outline" 
-                style={{ padding: '0.75rem', height: '100%' }}
-                title="Ganti Pertanyaan"
-              >
-                🔄
+              <button type="submit" className="btn-primary btn-block" disabled={otpLoading || otpCode.length !== 6} style={{ marginTop: '1rem' }}>
+                {otpLoading ? <span className="spinner"></span> : '✓ Verifikasi'}
               </button>
-            </div>
-          </div>
+              <button type="button" onClick={handleBackToLogin} style={{
+                width: '100%', marginTop: '0.75rem', padding: '0.65rem',
+                background: 'none', border: 'none', color: 'var(--text-muted)',
+                cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
+              }}>
+                ← Kembali ke Login
+              </button>
+            </form>
 
-          <button type="submit" className="btn-primary btn-block" disabled={loading} style={{ marginTop: '1.5rem' }}>
-            {loading ? <span className="spinner"></span> : 'Masuk Sistem'}
-          </button>
-        </form>
+            <div style={{ marginTop: '1.5rem', padding: '0.75rem 1rem', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: '#0369a1', lineHeight: '1.5' }}>
+                <strong>💡 Tips:</strong> Kode berlaku selama 30 detik. Pastikan waktu HP Anda sudah sinkron dengan internet.
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
+      {/* Disclaimer Modal */}
       {showDisclaimer && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
           <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
@@ -150,28 +235,18 @@ export default function Login() {
               </ol>
               <p style={{ margin: 0, fontWeight: 800, color: '#0f172a' }}>Terima kasih telah menggunakan aplikasi AKSI-APCI.</p>
             </div>
-            
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
-                onClick={handleDisagree}
-                style={{ flex: 1, padding: '0.75rem', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', transition: 'background-color 0.2s' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#e2e8f0'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#f1f5f9'}
-              >
+              <button onClick={handleDisagree} style={{ flex: 1, padding: '0.75rem', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
                 TIDAK SETUJU
               </button>
-              <button 
-                onClick={handleAgree}
-                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s' }}
-                onMouseOver={(e) => e.target.style.opacity = '0.9'}
-                onMouseOut={(e) => e.target.style.opacity = '1'}
-              >
+              <button onClick={handleAgree} style={{ flex: 1, padding: '0.75rem', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
                 SAYA SETUJU
               </button>
             </div>
           </div>
         </div>
       )}
+
       <div style={{ position: 'relative', marginTop: 'auto', paddingTop: '2rem', paddingBottom: '1.5rem', width: '100%', textAlign: 'center', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.02em', zIndex: 10 }}>
         Copyright &copy; APCI Asosiasi Praktisi Casemix Indonesia
       </div>

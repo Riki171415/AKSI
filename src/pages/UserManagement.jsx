@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/axios';
-import { Users, UserPlus, Edit, Trash2, Shield, X, Save } from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2, Shield, X, Save, ShieldOff } from 'lucide-react';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -103,16 +103,21 @@ export default function UserManagement() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus user ini?')) return;
-    
     try {
       const token = localStorage.getItem('token');
-      await api.delete(`/api/users/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchUsers();
-    } catch (err) {
-      alert('Gagal menghapus user');
-    }
+    } catch { alert('Gagal menghapus user'); }
+  };
+
+  const handleResetMfa = async (user) => {
+    if (!window.confirm(`Reset MFA untuk user "${user.username}"? User tersebut harus setup MFA ulang setelah ini.`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      await api.post(`/api/auth/mfa/admin-reset/${user.id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      alert(`MFA untuk "${user.username}" berhasil di-reset.`);
+      fetchUsers();
+    } catch (err) { alert(err.response?.data?.message || 'Gagal reset MFA'); }
   };
 
   return (
@@ -139,6 +144,7 @@ export default function UserManagement() {
                 <th>Username</th>
                 <th>Role</th>
                 <th>Kode RS</th>
+                <th style={{ textAlign: 'center' }}>MFA</th>
                 <th style={{ textAlign: 'center' }}>Aksi</th>
               </tr>
             </thead>
@@ -154,12 +160,23 @@ export default function UserManagement() {
                     </span>
                   </td>
                   <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{u.kodeRs}</td>
-                  <td style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-                    <button onClick={() => handleOpenModal(u)} style={{ padding: '0.5rem', color: '#0284c7', backgroundColor: '#f0f9ff' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    {u.mfaEnabled
+                      ? <span style={{ padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 700, backgroundColor: '#d1fae5', color: '#065f46' }}>✓ AKTIF</span>
+                      : <span style={{ padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 700, backgroundColor: '#f1f5f9', color: '#94a3b8' }}>TIDAK</span>
+                    }
+                  </td>
+                  <td style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem' }}>
+                    <button onClick={() => handleOpenModal(u)} title="Edit User" style={{ padding: '0.5rem', color: '#0284c7', backgroundColor: '#f0f9ff' }}>
                       <Edit size={16} />
                     </button>
+                    {u.mfaEnabled && (
+                      <button onClick={() => handleResetMfa(u)} title="Reset MFA" style={{ padding: '0.5rem', color: '#d97706', backgroundColor: '#fef3c7' }}>
+                        <ShieldOff size={16} />
+                      </button>
+                    )}
                     {u.username !== 'admin' && (
-                      <button onClick={() => handleDelete(u.id)} style={{ padding: '0.5rem', color: '#e11d48', backgroundColor: '#ffe4e6' }}>
+                      <button onClick={() => handleDelete(u.id)} title="Hapus User" style={{ padding: '0.5rem', color: '#e11d48', backgroundColor: '#ffe4e6' }}>
                         <Trash2 size={16} />
                       </button>
                     )}

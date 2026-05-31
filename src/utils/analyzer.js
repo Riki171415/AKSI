@@ -3,7 +3,6 @@
 // File is processed entirely in the browser - never uploaded to server
 
 const STORAGE_KEY = 'aksi_analysis_result';
-const CONFIG_KEY = 'aksi_rs_config';
 
 // ── CSV Loader ──────────────────────────────────────────────────────────────
 
@@ -175,84 +174,86 @@ export async function analyzeTxtFile(file, myCompetencies = {}, appendMode = fal
   };
 
   let isHeader = true;
-  let headers = [];
+  // BUG B FIX: Header indices cached once, not re-computed per row
+  let diagIdx = -1, procIdx = -1, nameIdx = -1, mrnIdx = -1, sepIdx = -1;
+  let dateIdx = -1, tarifIdx = -1, tarifRsIdx = -1, idrgTarifIdx = -1;
+  let birthDateIdx = -1, sexIdx = -1, idrgMdcIdx = -1, idrgDrgCodeIdx = -1;
+  let idrgDrgDescIdx = -1, idrgTopUpIdx = -1, inacbgDescIdx = -1, inacbgIdx = -1;
+  let ptdIdx = -1, dischargeIdx = -1, dpjpIdx = -1;
+
+  const detectHeaders = (hdrs) => {
+    diagIdx        = hdrs.indexOf('DIAGLIST');
+    procIdx        = hdrs.indexOf('PROCLIST');
+    nameIdx        = hdrs.indexOf('NAMA_PASIEN');
+    mrnIdx         = hdrs.indexOf('MRN');
+    sepIdx         = hdrs.indexOf('SEP');
+    dateIdx        = hdrs.indexOf('DISCHARGE_DATE');
+    tarifIdx       = hdrs.indexOf('TOTAL_TARIF');
+    tarifRsIdx     = hdrs.indexOf('TARIF_RS');
+    idrgTarifIdx   = hdrs.indexOf('IDRG_TOTAL_TARIF');
+    birthDateIdx   = hdrs.indexOf('BIRTH_DATE');
+    sexIdx         = hdrs.indexOf('SEX');
+    idrgMdcIdx     = hdrs.indexOf('IDRG_MDC_NUMBER');
+    idrgDrgCodeIdx = hdrs.indexOf('IDRG_DRG_CODE');
+    idrgDrgDescIdx = hdrs.indexOf('IDRG_DRG_DESCRIPTION');
+    idrgTopUpIdx   = hdrs.indexOf('IDRG_TOP_UP');
+    inacbgDescIdx  = hdrs.findIndex(h => h === 'INACBG_DESKRIPSI' || h === 'INACBG_DESCRIPTION' || (h.includes('INACBG') && h.toLowerCase().includes('desk')));
+    inacbgIdx      = hdrs.findIndex(h => h.includes('INACBG') && h !== hdrs[inacbgDescIdx]);
+    ptdIdx         = hdrs.indexOf('JENIS_RAWAT');
+    if (ptdIdx === -1) ptdIdx = hdrs.indexOf('PTD');
+    if (ptdIdx === -1) ptdIdx = hdrs.indexOf('PELAYANAN');
+    dischargeIdx   = hdrs.indexOf('DISCHARGE_STATUS');
+    if (dischargeIdx === -1) dischargeIdx = hdrs.indexOf('STATUS_PULANG');
+    if (dischargeIdx === -1) dischargeIdx = hdrs.indexOf('CARA_PULANG');
+    dpjpIdx = -1;
+    for (let i = 0; i < hdrs.length; i++) {
+      const h = hdrs[i].trim().toUpperCase();
+      if (['DPJP','NAMA_DOKTER','NAMA DOKTER','DOKTER_PJ','DOKTER','NAMA_DPJP','DOKTER_DPJP'].includes(h)) {
+        dpjpIdx = i; break;
+      }
+    }
+  };
 
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx];
     if (!line.trim()) continue;
 
-    // Progress callback every 500 lines
+    // Progress callback every 500 lines + yield to browser
     if (onProgress && lineIdx % 500 === 0) {
       onProgress(Math.round((lineIdx / totalLines) * 100));
-      // Yield to browser to prevent UI freeze
       await new Promise(r => setTimeout(r, 0));
     }
 
     const columns = line.split('\t');
 
     if (isHeader) {
-      headers = columns.map(h => h.trim());
+      const hdrs = columns.map(h => h.trim());
+      detectHeaders(hdrs); // BUG B FIX: detect once
       isHeader = false;
       continue;
     }
 
-    const diagIdx = headers.indexOf('DIAGLIST');
-    const procIdx = headers.indexOf('PROCLIST');
-    const nameIdx = headers.indexOf('NAMA_PASIEN');
-    const mrnIdx = headers.indexOf('MRN');
-    const sepIdx = headers.indexOf('SEP');
-    const dateIdx = headers.indexOf('DISCHARGE_DATE');
-    const tarifIdx = headers.indexOf('TOTAL_TARIF');
-    const tarifRsIdx = headers.indexOf('TARIF_RS');
-    const idrgTarifIdx = headers.indexOf('IDRG_TOTAL_TARIF');
-    const birthDateIdx = headers.indexOf('BIRTH_DATE');
-    const sexIdx = headers.indexOf('SEX');
-    const idrgMdcIdx = headers.indexOf('IDRG_MDC_NUMBER');
-    const idrgDrgCodeIdx = headers.indexOf('IDRG_DRG_CODE');
-    const idrgDrgDescIdx = headers.indexOf('IDRG_DRG_DESCRIPTION');
-    const idrgTopUpIdx = headers.indexOf('IDRG_TOP_UP');
-
-    let inacbgDescIdx = headers.findIndex(h => h === 'INACBG_DESKRIPSI' || h === 'INACBG_DESCRIPTION' || (h.includes('INACBG') && h.toLowerCase().includes('desk')));
-    const inacbgIdx = headers.findIndex(h => h.includes('INACBG') && h !== headers[inacbgDescIdx]);
-    let ptdIdx = headers.indexOf('JENIS_RAWAT');
-    if (ptdIdx === -1) ptdIdx = headers.indexOf('PTD');
-    if (ptdIdx === -1) ptdIdx = headers.indexOf('PELAYANAN');
-    let dischargeIdx = headers.indexOf('DISCHARGE_STATUS');
-    if (dischargeIdx === -1) dischargeIdx = headers.indexOf('STATUS_PULANG');
-    if (dischargeIdx === -1) dischargeIdx = headers.indexOf('CARA_PULANG');
-    let dpjpIdx = -1;
-    for (let i = 0; i < headers.length; i++) {
-      const h = headers[i].trim().toUpperCase();
-      if (['DPJP', 'NAMA_DOKTER', 'NAMA DOKTER', 'DOKTER_PJ', 'DOKTER', 'NAMA_DPJP', 'DOKTER_DPJP'].includes(h)) {
-        dpjpIdx = i; break;
-      }
-    }
-
     if (diagIdx === -1) continue;
 
-    const diaglist = (columns[diagIdx] || '').split(';');
-    const proclist = procIdx !== -1 ? (columns[procIdx] || '').split(';') : [];
+    const diaglist = (columns[diagIdx] || '').split(';').map(s => s.trim()).filter(Boolean);
+    const proclist = procIdx !== -1 ? (columns[procIdx] || '').split(';').map(s => s.trim()).filter(Boolean) : [];
 
+    // Track frequency
     if (diaglist.length > 0) {
-      const ut = diaglist[0].trim();
-      if (ut) diagUtamaFreq[ut] = (diagUtamaFreq[ut] || 0) + 1;
+      diagUtamaFreq[diaglist[0]] = (diagUtamaFreq[diaglist[0]] || 0) + 1;
       for (let i = 1; i < diaglist.length; i++) {
-        const sec = diaglist[i].trim();
-        if (sec) diagSekunderFreq[sec] = (diagSekunderFreq[sec] || 0) + 1;
+        diagSekunderFreq[diaglist[i]] = (diagSekunderFreq[diaglist[i]] || 0) + 1;
       }
     }
-    for (const p of proclist) {
-      const pt = p.trim();
-      if (pt) procFreq[pt] = (procFreq[pt] || 0) + 1;
-    }
+    for (const p of proclist) procFreq[p] = (procFreq[p] || 0) + 1;
 
     const patientRaw = nameIdx !== -1 ? columns[nameIdx] : 'Unknown';
-    const patientName = maskName(patientRaw.trim());
-    const mrn = mrnIdx !== -1 ? columns[mrnIdx] : 'Unknown';
-    const sep = sepIdx !== -1 ? columns[sepIdx] : 'Unknown';
-    const mdcNum = idrgMdcIdx !== -1 ? columns[idrgMdcIdx] : '';
-    const drgCode = idrgDrgCodeIdx !== -1 ? columns[idrgDrgCodeIdx] : '';
-    const drgDesc = idrgDrgDescIdx !== -1 ? columns[idrgDrgDescIdx] : '';
+    const patientName = maskName((patientRaw || '').trim());
+    const mrn = mrnIdx !== -1 ? (columns[mrnIdx] || 'Unknown') : 'Unknown';
+    const sep = sepIdx !== -1 ? (columns[sepIdx] || 'Unknown') : 'Unknown';
+    const mdcNum = idrgMdcIdx !== -1 ? (columns[idrgMdcIdx] || '') : '';
+    const drgCode = idrgDrgCodeIdx !== -1 ? (columns[idrgDrgCodeIdx] || '') : '';
+    const drgDesc = idrgDrgDescIdx !== -1 ? (columns[idrgDrgDescIdx] || '') : '';
     const topUp = idrgTopUpIdx !== -1 ? parseTarif(columns[idrgTopUpIdx]) : 0;
 
     let isBedah = false;
@@ -263,21 +264,21 @@ export async function analyzeTxtFile(file, myCompetencies = {}, appendMode = fal
     const typeLayanan = isBedah ? 'Bedah' : 'Non-Bedah';
     const isUngroupable = mdcNum === '36';
 
-    const dateStr = dateIdx !== -1 ? columns[dateIdx] : '';
+    const dateStr = dateIdx !== -1 ? (columns[dateIdx] || '') : '';
     let monthKey = 'Unknown';
     if (dateStr.includes('/')) {
-      const parts = dateStr.split('/');
-      if (parts.length >= 3) monthKey = parts[2] + '-' + parts[1];
+      const p = dateStr.split('/');
+      if (p.length >= 3) monthKey = p[2] + '-' + p[1];
     } else if (dateStr.includes('-')) {
-      const parts = dateStr.split('-');
-      if (parts.length >= 3) monthKey = parts[0] + '-' + parts[1];
+      const p = dateStr.split('-');
+      if (p.length >= 3) monthKey = p[0] + '-' + p[1];
     }
 
-    const tarif = parseTarif(tarifIdx !== -1 ? columns[tarifIdx] : '0');
-    const tarifRs = parseTarif(tarifRsIdx !== -1 ? columns[tarifRsIdx] : '0');
+    const tarif      = parseTarif(tarifIdx !== -1 ? columns[tarifIdx] : '0');
+    const tarifRs    = parseTarif(tarifRsIdx !== -1 ? columns[tarifRsIdx] : '0');
     const tarifIdrgRaw = idrgTarifIdx !== -1 ? parseTarif(columns[idrgTarifIdx]) : tarif;
-    const birthDateStr = birthDateIdx !== -1 ? columns[birthDateIdx] : '';
-    const sexVal = sexIdx !== -1 ? columns[sexIdx] : '';
+    const birthDateStr = birthDateIdx !== -1 ? (columns[birthDateIdx] || '') : '';
+    const sexVal       = sexIdx !== -1 ? (columns[sexIdx] || '') : '';
 
     let ageInDays = 999;
     if (birthDateStr && dateStr) {
@@ -294,18 +295,18 @@ export async function analyzeTxtFile(file, myCompetencies = {}, appendMode = fal
     }
 
     const inacbgCode = inacbgIdx !== -1 && columns[inacbgIdx] ? columns[inacbgIdx].trim() : '';
-    const inacbgDesc = inacbgDescIdx !== -1 ? columns[inacbgDescIdx] : '';
-    let ptd = ptdIdx !== -1 ? columns[ptdIdx] : '';
-    let isRI = ptd ? (ptd === '1' || ptd.toLowerCase().includes('inap')) : (inacbgCode ? !(inacbgCode.endsWith('-0') || inacbgCode.endsWith('0')) : true);
+    const inacbgDesc = inacbgDescIdx !== -1 ? (columns[inacbgDescIdx] || '') : '';
+    const ptd = ptdIdx !== -1 ? (columns[ptdIdx] || '') : '';
+    const isRI = ptd ? (ptd === '1' || ptd.toLowerCase().includes('inap')) : (inacbgCode ? !(inacbgCode.endsWith('-0') || inacbgCode.endsWith('0')) : true);
 
-    const dStat = dischargeIdx !== -1 ? columns[dischargeIdx].trim() : '';
+    const dStat = dischargeIdx !== -1 ? (columns[dischargeIdx] || '').trim() : '';
     if (['1', '2', '3', '4'].includes(dStat)) dischargeStats[dStat]++;
     else dischargeStats['5']++;
 
-    const dpjpNameRaw = dpjpIdx !== -1 ? columns[dpjpIdx] : '';
-    let dpjpRealName = dpjpNameRaw ? dpjpNameRaw.trim() : 'Tidak Diketahui';
+    const dpjpNameRaw = dpjpIdx !== -1 ? (columns[dpjpIdx] || '') : '';
+    let dpjpRealName = dpjpNameRaw.trim() || 'Tidak Diketahui';
     if (['-', '', '*'].includes(dpjpRealName)) dpjpRealName = 'Tidak Diketahui';
-    let dpjpKey = dpjpRealName !== 'Tidak Diketahui' ? normalizeDpjpName(dpjpRealName) : 'Tidak Diketahui';
+    const dpjpKey = dpjpRealName !== 'Tidak Diketahui' ? normalizeDpjpName(dpjpRealName) : 'Tidak Diketahui';
 
     if (!dpjpMap[dpjpKey]) {
       dpjpMap[dpjpKey] = {
@@ -367,34 +368,40 @@ export async function analyzeTxtFile(file, myCompetencies = {}, appendMode = fal
     if (complexityStats[complexity] !== undefined) complexityStats[complexity]++;
     else complexityStats['Unknown']++;
 
-    const allIcds = [...diaglist, ...proclist].filter(c => c.trim());
-    let patientNeededCompetencies = [];
-    let groupNamesForPatient = new Set();
-    let highestComp = null;
+    // BUG A FIX: Track HIGHEST competency PER GROUP (not just single global highest)
+    // Both diaglist AND proclist are checked for competency mapping
+    const allIcds = [...diaglist, ...proclist];
+    const groupHighestMap = new Map(); // group → { group, level, levelInt }
 
     for (const icd of allIcds) {
       const cleanIcd = icd.trim();
+      if (!cleanIcd) continue;
       let needed = icdMap.get(cleanIcd) || icdMap.get(cleanIcd.replace('.', ''));
       if (!needed && cleanIcd.includes('.')) needed = icdMap.get(cleanIcd.split('.')[0]);
-      if (needed) {
-        for (const n of needed) {
-          const gNameLower = n.group.toLowerCase();
-          if (gNameLower.includes('neonatus') && ageInDays >= 29) continue;
-          if ((gNameLower.includes('obgyn') || gNameLower.includes('kandungan') || gNameLower.includes('obstetri')) && sexVal !== '2') continue;
-          if (!highestComp || n.levelInt > highestComp.levelInt) highestComp = n;
+      if (!needed) continue;
+
+      for (const n of needed) {
+        const gNameLower = n.group.toLowerCase();
+        // Exclude neonatus for patients ≥29 days
+        if (gNameLower.includes('neonatus') && ageInDays >= 29) continue;
+        // Exclude obgyn/kandungan for male patients
+        if ((gNameLower.includes('obgyn') || gNameLower.includes('kandungan') || gNameLower.includes('obstetri')) && sexVal !== '2') continue;
+
+        const existing = groupHighestMap.get(n.group);
+        if (!existing || n.levelInt > existing.levelInt) {
+          groupHighestMap.set(n.group, n);
         }
       }
     }
 
-    if (highestComp) {
-      patientNeededCompetencies.push(highestComp);
-      groupNamesForPatient.add(highestComp.group);
-    }
+    // Build patientNeededCompetencies from ALL groups (not just highest overall)
+    const patientNeededCompetencies = Array.from(groupHighestMap.values());
+    const groupNamesForPatient = new Set(patientNeededCompetencies.map(c => c.group));
 
     const isUnmapped = !isUngroupable && patientNeededCompetencies.length === 0;
 
     if (isUnmapped) {
-      const primaryIcd = allIcds.length > 0 ? allIcds[0].trim() : 'UNKNOWN';
+      const primaryIcd = diaglist.length > 0 ? diaglist[0] : (proclist.length > 0 ? proclist[0] : 'UNKNOWN');
       let desc = fallbackDict[primaryIcd];
       if (!desc && primaryIcd.includes('.')) desc = fallbackDict[primaryIcd.split('.')[0]];
       if (!desc) desc = 'Tidak ada deskripsi';
@@ -410,7 +417,8 @@ export async function analyzeTxtFile(file, myCompetencies = {}, appendMode = fal
     totalPatients++;
     totalTarifInacbg += tarif;
 
-    let missingCompetencies = [], missingSet = new Set();
+    const missingCompetencies = [];
+    const missingSet = new Set();
 
     for (const gName of groupNamesForPatient) {
       let reqLevelStr = 'Belum Ada Mapping', reqLevelInt = 0;
@@ -486,7 +494,8 @@ export async function analyzeTxtFile(file, myCompetencies = {}, appendMode = fal
         mdcMap[gName].comps[lvlUpper].tIna += tarif;
         mdcMap[gName].comps[lvlUpper].tIdrg += finalTarifIdrgGroup;
 
-        const icdCode = diaglist.length > 0 && diaglist[0].trim() ? diaglist[0].trim() : 'Unknown';
+        // Use primary diagnosis ICD for drilldown label
+        const icdCode = diaglist.length > 0 ? diaglist[0] : (proclist.length > 0 ? proclist[0] : 'Unknown');
         let icdDesc = (icdDescMap && icdDescMap.get(icdCode)) ? icdDescMap.get(icdCode) : (fallbackDict[icdCode] || '');
         if (!icdDesc && icdCode.includes('.')) icdDesc = fallbackDict[icdCode.split('.')[0]] || '';
         if (!icdDesc) icdDesc = '(Deskripsi tidak tersedia di Master Data)';
@@ -630,16 +639,13 @@ export async function analyzeTxtFile(file, myCompetencies = {}, appendMode = fal
   // Append mode: merge with previous result
   if (appendMode) {
     const prev = loadResult();
-    if (prev) {
-      return mergeResults(prev, finalResponse);
-    }
+    if (prev) return mergeResults(prev, finalResponse);
   }
 
   return finalResponse;
 }
 
 function mergeResults(prev, curr) {
-  // Merge summary
   const ps = prev.summary || {}, cs = curr.summary;
   cs.totalPatients += ps.totalPatients || 0;
   cs.patientsWithinCompetency += ps.patientsWithinCompetency || 0;
@@ -653,18 +659,17 @@ function mergeResults(prev, curr) {
 
   const pd = prev.dashboard || {}, cd = curr.dashboard;
   cd.totalRows = cs.totalPatients;
-  ['ranapCount', 'tIna', 'tIdrg', 'tRs', 'cInaHigh', 'cIdrgHigh', 'cEq'].forEach(k => { cd[k] = (cd[k] || 0) + (pd[k] || 0); });
+  ['ranapCount','tIna','tIdrg','tRs','cInaHigh','cIdrgHigh','cEq'].forEach(k => { cd[k] = (cd[k] || 0) + (pd[k] || 0); });
   cd.selisihTotal = cd.tIdrg - cd.tIna;
   cd.rataIna = cd.totalRows ? cd.tIna / cd.totalRows : 0;
   cd.rataIdrg = cd.totalRows ? cd.tIdrg / cd.totalRows : 0;
 
-  ['severityStats', 'complexityStats', 'dischargeStats'].forEach(sk => {
+  ['severityStats','complexityStats','dischargeStats'].forEach(sk => {
     Object.keys(pd[sk] || {}).forEach(k => { cd[sk][k] = (cd[sk][k] || 0) + (pd[sk][k] || 0); });
   });
 
-  // Merge monthly reports
   const pr = prev.reports || {}, cr = curr.reports || {};
-  ['inaCbg', 'idrg', 'gabungan'].forEach(rType => {
+  ['inaCbg','idrg','gabungan'].forEach(rType => {
     (pr[rType] || []).forEach(pItem => {
       const cItem = cr[rType].find(c => c.monthKey === pItem.monthKey);
       if (cItem) { Object.keys(pItem).forEach(f => { if (typeof pItem[f] === 'number') cItem[f] = (cItem[f] || 0) + pItem[f]; }); }
@@ -672,15 +677,19 @@ function mergeResults(prev, curr) {
     });
     cr[rType].sort((a, b) => a.monthKey.localeCompare(b.monthKey));
   });
-  ['idrg_ri', 'idrg_rj'].forEach(rType => {
+  ['idrg_ri','idrg_rj'].forEach(rType => {
     (pr[rType] || []).forEach(pItem => {
       const cItem = cr[rType].find(c => c.drgCode === pItem.drgCode);
-      if (cItem) { ['cases', 'tRs', 'tIna', 'tIdrg'].forEach(f => { cItem[f] = (cItem[f] || 0) + (pItem[f] || 0); }); }
+      if (cItem) { ['cases','tRs','tIna','tIdrg'].forEach(f => { cItem[f] = (cItem[f] || 0) + (pItem[f] || 0); }); }
       else cr[rType].push({ ...pItem });
     });
     cr[rType].sort((a, b) => a.drgCode.localeCompare(b.drgCode));
   });
-  cr.gabungan && (cd.monthlyArray = cr.gabungan.map(g => ({ label: g.monthKey, tarifRs: g.ri_tRs + g.rj_tRs, inacbg: g.inacbg_ri_t + g.inacbg_rj_t, idrg: g.idrg_ri_t + g.idrg_rj_t, selisih: (g.idrg_ri_t + g.idrg_rj_t) - (g.inacbg_ri_t + g.inacbg_rj_t) })));
+  cr.gabungan && (cd.monthlyArray = cr.gabungan.map(g => ({
+    label: g.monthKey, tarifRs: g.ri_tRs + g.rj_tRs,
+    inacbg: g.inacbg_ri_t + g.inacbg_rj_t, idrg: g.idrg_ri_t + g.idrg_rj_t,
+    selisih: (g.idrg_ri_t + g.idrg_rj_t) - (g.inacbg_ri_t + g.inacbg_rj_t)
+  })));
 
   curr.anomalies = [...(curr.anomalies || []), ...(prev.anomalies || [])];
   return curr;
