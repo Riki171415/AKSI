@@ -24,7 +24,8 @@ exports.getAllUsers = (req, res) => {
         username: u.username,
         role: u.role,
         kodeRs: u.kodeRs,
-        nama: u.nama
+        nama: u.nama,
+        mfaEnabled: !!u.mfaEnabled
     }));
     res.json(sanitizedUsers);
 };
