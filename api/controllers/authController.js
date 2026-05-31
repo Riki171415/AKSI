@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
-const { hospitalSettings } = require('../store');
+const { hospitalSettings, users } = require('../store');
 const { competencies } = require('../utils/csvLoader');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
@@ -13,27 +13,7 @@ const APP_NAME = 'AKSI-APCI';
 // Configure TOTP - 30 second window, allow 1 step tolerance for clock skew
 authenticator.options = { step: 30, window: 1 };
 
-const getUsersFilePath = () => {
-  const possiblePaths = [
-    path.join(__dirname, '..', 'data', 'users.json'),
-    path.join(process.cwd(), 'api', 'data', 'users.json'),
-    path.join(process.cwd(), 'data', 'users.json'),
-  ];
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) return p;
-  }
-  return possiblePaths[0];
-};
-
-const readUsers = () => {
-  try {
-    return JSON.parse(fs.readFileSync(getUsersFilePath(), 'utf8'));
-  } catch { return []; }
-};
-
-const writeUsers = (users) => {
-  fs.writeFileSync(getUsersFilePath(), JSON.stringify(users, null, 2), 'utf8');
-};
+// Using users from store.js directly
 
 // ── Login ────────────────────────────────────────────────────────────────────
 
@@ -42,7 +22,6 @@ exports.login = (req, res) => {
   if (!username || !password)
     return res.status(400).json({ message: 'Username dan Password diperlukan' });
 
-  const users = readUsers();
   const user = users.find(u => u.username === username && u.password === password);
   if (!user)
     return res.status(401).json({ message: 'Username atau Password salah' });
@@ -86,7 +65,6 @@ exports.verifyMfaLogin = (req, res) => {
   if (!payload.mfaStep)
     return res.status(401).json({ message: 'Token tidak valid untuk verifikasi MFA' });
 
-  const users = readUsers();
   const user = users.find(u => u.id === payload.id);
   if (!user || !user.mfaEnabled || !user.mfaSecret)
     return res.status(401).json({ message: 'MFA tidak aktif untuk akun ini' });
@@ -111,7 +89,6 @@ exports.verifyMfaLogin = (req, res) => {
 
 exports.generateMfaSetup = async (req, res) => {
   const user = req.user;
-  const users = readUsers();
   const dbUser = users.find(u => u.id === user.id);
   if (!dbUser) return res.status(404).json({ message: 'User tidak ditemukan' });
 
@@ -125,8 +102,7 @@ exports.generateMfaSetup = async (req, res) => {
   try {
     const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
     // Store pending secret in user record (not yet active)
-    dbUser.mfaPendingSecret = secret;
-    writeUsers(users);
+    // Since users is a reference to the array in store.js, changes to dbUser are automatically persisted in memory
     res.json({ secret, qrCode: qrCodeDataUrl });
   } catch (err) {
     res.status(500).json({ message: 'Gagal generate QR Code' });
@@ -139,7 +115,6 @@ exports.verifyMfaSetup = (req, res) => {
   const { otpCode } = req.body;
   if (!otpCode) return res.status(400).json({ message: 'Kode OTP diperlukan' });
 
-  const users = readUsers();
   const dbUser = users.find(u => u.id === req.user.id);
   if (!dbUser) return res.status(404).json({ message: 'User tidak ditemukan' });
 
@@ -153,7 +128,6 @@ exports.verifyMfaSetup = (req, res) => {
   dbUser.mfaSecret = dbUser.mfaPendingSecret;
   dbUser.mfaPendingSecret = null;
   dbUser.mfaEnabled = true;
-  writeUsers(users);
 
   res.json({ message: 'MFA berhasil diaktifkan! Login berikutnya akan memerlukan kode Authenticator.' });
 };
@@ -164,7 +138,6 @@ exports.disableMfa = (req, res) => {
   const { password, otpCode } = req.body;
   if (!password) return res.status(400).json({ message: 'Password diperlukan untuk menonaktifkan MFA' });
 
-  const users = readUsers();
   const dbUser = users.find(u => u.id === req.user.id);
   if (!dbUser) return res.status(404).json({ message: 'User tidak ditemukan' });
 
@@ -180,7 +153,6 @@ exports.disableMfa = (req, res) => {
   dbUser.mfaEnabled = false;
   dbUser.mfaSecret = null;
   dbUser.mfaPendingSecret = null;
-  writeUsers(users);
 
   res.json({ message: 'MFA berhasil dinonaktifkan.' });
 };
@@ -199,7 +171,6 @@ exports.adminResetMfa = (req, res) => {
   target.mfaEnabled = false;
   target.mfaSecret = null;
   target.mfaPendingSecret = null;
-  writeUsers(users);
 
   res.json({ message: `MFA untuk user "${target.username}" berhasil di-reset oleh admin.` });
 };
@@ -207,7 +178,6 @@ exports.adminResetMfa = (req, res) => {
 // ── MFA: Get status ──────────────────────────────────────────────────────────
 
 exports.getMfaStatus = (req, res) => {
-  const users = readUsers();
   const dbUser = users.find(u => u.id === req.user.id);
   if (!dbUser) return res.status(404).json({ message: 'User tidak ditemukan' });
   res.json({ mfaEnabled: !!dbUser.mfaEnabled });

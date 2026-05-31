@@ -1,23 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const usersFilePath = path.join(__dirname, '../data/users.json');
-
-const readUsers = () => {
-    try {
-        const data = fs.readFileSync(usersFilePath, 'utf8');
-        return JSON.parse(data);
-    } catch (err) {
-        return [];
-    }
-};
-
-const writeUsers = (users) => {
-    fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
-};
+const { users } = require('../store');
 
 exports.getAllUsers = (req, res) => {
-    const users = readUsers();
+    // Users is already loaded in memory
     // Don't send passwords to frontend
     const sanitizedUsers = users.map(u => ({
         id: u.id,
@@ -37,7 +24,7 @@ exports.createUser = (req, res) => {
         return res.status(400).json({ message: 'Semua field wajib diisi' });
     }
     
-    const users = readUsers();
+    // Users array already exists
     
     if (users.find(u => u.username === username)) {
         return res.status(400).json({ message: 'Username sudah digunakan' });
@@ -53,7 +40,7 @@ exports.createUser = (req, res) => {
     };
     
     users.push(newUser);
-    writeUsers(users);
+    // writeUsers is not needed since users is in memory
     
     res.status(201).json({ message: 'User berhasil ditambahkan', user: { id: newUser.id, username, role, kodeRs, nama } });
 };
@@ -62,7 +49,7 @@ exports.updateUser = (req, res) => {
     const { id } = req.params;
     const { username, password, role, kodeRs, nama } = req.body;
     
-    const users = readUsers();
+    // Users array already exists
     const index = users.findIndex(u => u.id === id);
     
     if (index === -1) {
@@ -86,7 +73,7 @@ exports.updateUser = (req, res) => {
         users[index].password = password; // Should hash
     }
     
-    writeUsers(users);
+    // writeUsers is not needed since users is in memory
     
     const updatedUser = { ...users[index] };
     delete updatedUser.password;
@@ -96,15 +83,14 @@ exports.updateUser = (req, res) => {
 
 exports.deleteUser = (req, res) => {
     const { id } = req.params;
-    let users = readUsers();
+    // Find user by id in memory array
     
-    const initialLength = users.length;
-    users = users.filter(u => u.id !== id);
-    
-    if (users.length === initialLength) {
+    const index = users.findIndex(u => u.id === id);
+    if (index === -1) {
         return res.status(404).json({ message: 'User tidak ditemukan' });
     }
     
-    writeUsers(users);
+    users.splice(index, 1);
+    
     res.json({ message: 'User berhasil dihapus' });
 };
